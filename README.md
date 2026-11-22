@@ -1,49 +1,53 @@
 # Marketing OS · Dochodowe Studio
 
-Platforma, która prowadzi właściciela studia treningowego przez marketing według metodyki Dochodowego Studia (Bartek): DNA studia → strategia → lejki → wdrożenie → analiza.
+Platforma, która prowadzi właściciela studia treningowego krok po kroku przez marketing według metodyki Dochodowego Studia (Bartek). Treść ścieżki pochodzi z rozmowy Bartka w ChatGPT (`../materialy/spec-marketing-os.md`, poza repozytorium).
 
-## Ekrany
+## Droga uczestnika
 
-| Adres | Co jest |
+1. **Połącz AI** (`/start`): ChatGPT albo Claude (klucz API uczestnika) albo „Pracuję w swoim czacie” (kopiuje polecenie do ChatGPT Plus / Claude Pro i wkleja wynik).
+2. **Ankieta startowa** (`/ankieta`): 10 pytań → rozpoznanie etapu studia → propozycja ścieżki do akceptacji.
+3. **Ścieżka** (`/sciezka`, `/krok/<id>`): 12 kroków, każdy kończy się dokumentem do zatwierdzenia. Kolejny krok odblokowuje się po zatwierdzeniu poprzedniego:
+   materiały i obraz firmy → diagnoza → DNA studia → awatar → oferta → cel, budżet i czas → strategia i wybór lejka → gotowość lejka → mapa wdrożenia → koncepcje i materiały → analiza wyników → okazje.
+4. **Dokumenty** (`/dokumenty`) i **Lekcje** (`/lekcje`): wszystko, co powstało, i lekcje przypięte do kroków.
+5. **Panel zespołu DS** (`/zespol`): na razie dane przykładowe.
+
+Postęp (procent, kroki, dokumenty, lekcje) widać na pulpicie i w menu.
+
+## Gdzie co jest
+
+| Plik | Co zawiera |
 |---|---|
-| `/` | Pulpit uczestnika: następny krok, wyniki, ścieżka, plan tygodnia, rozliczenie |
-| `/sciezka` | Moduły 00–05 i 6 lejków z warunkami wejścia |
-| `/rozmowa` | Rozmowa z Marketing OS (działa na żywo po dodaniu klucza OpenAI) |
-| `/lekcje` | Biblioteka lekcji Skool i mentoringów |
-| `/zespol` | Panel zespołu DS: studia, alerty, koszt AI |
+| `src/lib/journey.ts` | Ankieta, etapy studia, 12 kroków (skrypty asystenta, szablony dokumentów, lekcje), liczenie postępu |
+| `src/lib/assistant.ts` | Wspólne zasady asystenta + składanie instrukcji dla kroku (także polecenie do skopiowania) |
+| `src/lib/ai.ts` | Jedyne połączenie z zewnętrznym AI (OpenAI / Anthropic), po stronie serwera |
+| `src/app/api/assistant/route.ts` | Endpoint asystenta: walidacja, limity, strumień odpowiedzi |
+| `src/lib/store.tsx` | Stan uczestnika. **Prototyp: zapis w przeglądarce (localStorage).** Docelowo Supabase |
 
-Dane na ekranach są **przykładowe** (`src/lib/data.ts`), dopóki nie podłączymy bazy.
+## AI i dane
 
-## Jak działa AI
-
-- Zewnętrzne AI to **tylko OpenAI** (modele GPT przez API). Łączy się z nim wyłącznie serwer: `src/app/api/chat/route.ts` → `src/lib/ai.ts`.
-- Przeglądarka nigdy nie widzi klucza. Rozmowy nie są zapisywane po stronie OpenAI (`store: false`).
-- Wszystko inne (konta, postęp, karty, wyniki, lekcje) zostaje na naszych serwerach: Vercel + Supabase (Frankfurt) + Bunny Stream.
-- Model zmieniasz jedną linijką w `.env.local` (`OPENAI_MODEL_CHAT`, `OPENAI_MODEL_WRITER`).
-- Instrukcje AI: `src/lib/prompts.ts` (wersja robocza, docelowo prompt główny i playbooki Bartka).
+- AI jest **zewnętrzne i należy do uczestnika**: jego klucz OpenAI albo Anthropic. Uczestnik sam płaci dostawcy za zużycie.
+- Klucz jest w przeglądarce uczestnika i jest wysyłany tylko razem z pytaniem; serwer go nie zapisuje ani nie loguje. OpenAI: `store: false`.
+- Abonamentów ChatGPT Plus / Claude Pro nie da się podłączyć automatycznie (dostawcy na to nie pozwalają) — dlatego tryb „kopiuj polecenie / wklej wynik”.
+- Ścieżka, postęp i dokumenty zostają u nas (docelowo Supabase, Frankfurt).
 
 ## Uruchomienie lokalnie
 
 ```bash
 npm install
-cp .env.example .env.local   # potem wklej klucz OPENAI_API_KEY w .env.local
-npm run dev                  # http://localhost:3000
+npm run dev   # http://localhost:3000
 ```
 
-## Zmienne środowiskowe
+Opcjonalnie `.env.local` (wzór: `.env.example`): klucz platformy do pokazów, gdy uczestnik nie poda własnego, oraz `SITE_PASSWORD`.
 
-| Zmienna | Po co |
-|---|---|
-| `OPENAI_API_KEY` | Klucz OpenAI API. Tylko w `.env.local` i w ustawieniach Vercel, nigdy w repozytorium. |
-| `OPENAI_MODEL_CHAT` | Model do rozmowy (domyślnie `gpt-5-mini`). |
-| `OPENAI_MODEL_WRITER` | Model do materiałów (domyślnie `gpt-5-mini`). |
-| `OPENAI_REASONING_EFFORT` | `low` / `medium` / `high`; puste dla modeli bez tej opcji. |
-| `SITE_PASSWORD` | Hasło do całej strony na czas pokazów (puste = bez hasła). |
+## Do zatwierdzenia przez Bartka
+
+- Pytania ankiety i reguła rozpoznawania etapu (w rozmowie nie ma ankiety ani progów).
+- Prompt główny, prompty 00.2–00.5, 18 promptów lejków i szablony DNA/awatara/oferty — były tylko w plikach jego projektu ChatGPT. Obecne skrypty są złożone z opisów w rozmowie.
+- Pełna lista lekcji ze Skoola i przypisanie do kroków.
 
 ## Następne kroki
 
-1. Supabase (Frankfurt): logowanie, role (uczestnik, pracownik studia, zespół DS, administrator), zapis kart i postępu.
-2. Bunny Stream: przeniesienie 191 lekcji z Looma, odtwarzacz tylko dla zalogowanych.
-3. Prompty i playbooki Bartka zamiast wersji roboczej, osobny skrypt dla każdego modułu.
-4. Limit kosztu AI na osobę (20 zł / mies.) i licznik w panelu zespołu.
-5. Wdrożenie na Vercel (plan Pro, region UE).
+1. Supabase: konta, role (uczestnik, pracownik studia, zespół DS), zapis postępu i dokumentów, panel zespołu na prawdziwych danych.
+2. Bunny Stream: 191 lekcji z Looma.
+3. Wgranie plików Bartka (prompt główny, lejki) do `journey.ts`.
+4. Wdrożenie na Vercel.

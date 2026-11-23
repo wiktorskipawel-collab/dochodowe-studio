@@ -7,9 +7,9 @@ import type { Lesson, Stage, Step, StepStatus, SurveyQuestion } from "@/lib/jour
 // DO ZATWIERDZENIA: w rozmowie nie ma dosłownej ankiety. Pytania złożone z tych, które Bartek zadaje w rozmowie
 // (cel biznesowy 89–90, waluta czas/pieniądze 82, godziny 75, problem z wym. 1, poziom 73).
 export const SURVEY: SurveyQuestion[] = [
-  { id: "studio", question: "Jak nazywa się Twoje studio i w jakim jest mieście?", placeholder: "np. Studio Forma, Poznań" },
+  { id: "studio", intro: "Zacznijmy od podstaw. Jak nazywa się Twoje studio i gdzie jest?", question: "Jak nazywa się Twoje studio i w jakim jest mieście?", placeholder: "np. Studio Forma, Poznań" },
   {
-    id: "etap", question: "Gdzie dziś jesteś z biznesem?",
+    id: "etap", intro: "Gdzie dziś jesteś? Inaczej prowadzę kogoś przed otwarciem, a inaczej działające studio.", question: "Gdzie dziś jesteś z biznesem?",
     options: [
       { value: "przed", label: "Dopiero otwieram studio, nie mam jeszcze klientów" },
       { value: "dziala", label: "Studio działa, ale klienci przychodzą nieregularnie" },
@@ -17,7 +17,7 @@ export const SURVEY: SurveyQuestion[] = [
     ],
   },
   {
-    id: "model", question: "Jak pracujesz?",
+    id: "model", intro: "Inaczej pozyskujemy klientów dla właściciela, a inaczej dla zespołu. Jak pracujesz?", question: "Jak pracujesz?",
     help: "Inaczej pozyskujemy klientów dla właściciela, a inaczej dla zespołu.",
     options: [
       { value: "solo", label: "Sam / sama prowadzę treningi" },
@@ -26,7 +26,7 @@ export const SURVEY: SurveyQuestion[] = [
     ],
   },
   {
-    id: "cel", question: "Jaki jest Twój główny cel na najbliższe 3 miesiące?",
+    id: "cel", intro: "Marketing ma służyć celowi biznesowemu. Co chcesz osiągnąć w najbliższe 3 miesiące?", question: "Jaki jest Twój główny cel na najbliższe 3 miesiące?",
     options: [
       { value: "otwarcie", label: "Otworzyć studio i zdobyć pierwszych klientów" },
       { value: "grafik", label: "Zapełnić grafik (mój albo nowego trenera)" },
@@ -36,7 +36,7 @@ export const SURVEY: SurveyQuestion[] = [
     ],
   },
   {
-    id: "zrodla", question: "Skąd dziś przychodzą do Ciebie klienci?",
+    id: "zrodla", intro: "Skąd dziś przychodzą klienci? Bez oceniania, potrzebuję prawdy.", question: "Skąd dziś przychodzą do Ciebie klienci?",
     options: [
       { value: "brak", label: "Jeszcze nie mam klientów" },
       { value: "polecenia", label: "Głównie z poleceń i przypadkiem" },
@@ -46,7 +46,7 @@ export const SURVEY: SurveyQuestion[] = [
     ],
   },
   {
-    id: "problem", question: "Co najbardziej Cię dziś blokuje?",
+    id: "problem", intro: "Co najbardziej Cię blokuje? Od tego zaczniemy diagnozę.", question: "Co najbardziej Cię dziś blokuje?",
     options: [
       { value: "zgloszenia", label: "Za mało zgłoszeń" },
       { value: "jakosc", label: "Zgłoszenia są drogie albo słabej jakości" },
@@ -56,7 +56,7 @@ export const SURVEY: SurveyQuestion[] = [
     ],
   },
   {
-    id: "waluta", question: "Czym chcesz płacić za nowych klientów?",
+    id: "waluta", intro: "Masz dwie waluty: czas i pieniądze. Za darmo nie będzie. Czym chcesz płacić?", question: "Czym chcesz płacić za nowych klientów?",
     help: "Masz dwie waluty: czas i pieniądze. Za darmo nie będzie.",
     options: [
       { value: "czas", label: "Bardziej czasem: treści, relacje, rozmowy" },
@@ -66,7 +66,7 @@ export const SURVEY: SurveyQuestion[] = [
     ],
   },
   {
-    id: "godziny", question: "Ile godzin tygodniowo realnie dasz na marketing?",
+    id: "godziny", intro: "Ile godzin tygodniowo realnie dasz na marketing? Ułożę plan pod Twój tydzień.", question: "Ile godzin tygodniowo realnie dasz na marketing?",
     options: [
       { value: "2", label: "Do 2 godzin" },
       { value: "5", label: "2–5 godzin" },
@@ -75,7 +75,7 @@ export const SURVEY: SurveyQuestion[] = [
     ],
   },
   {
-    id: "materialy", question: "Jakie materiały o studiu już masz?",
+    id: "materialy", intro: "Co już masz o studiu? Nic nie przepisujesz ręcznie, w pierwszym kroku po prostu to wkleisz.", question: "Jakie materiały o studiu już masz?",
     help: "Nie przepisujesz nic ręcznie. W pierwszym kroku po prostu je wkleisz.",
     options: [
       { value: "nic", label: "Prawie nic" },
@@ -85,7 +85,7 @@ export const SURVEY: SurveyQuestion[] = [
     ],
   },
   {
-    id: "poziom", question: "Jak radzisz sobie z narzędziami (Menedżer reklam, Canva, statystyki)?",
+    id: "poziom", intro: "Ostatnie pytanie: jak radzisz sobie z narzędziami? Dopasuję, jak mocno prowadzę Cię za rękę.", question: "Jak radzisz sobie z narzędziami (Menedżer reklam, Canva, statystyki)?",
     options: [
       { value: "poczatkujacy", label: "Słabo, prowadź mnie za rękę" },
       { value: "sredni", label: "Średnio, wybiorę z gotowych propozycji" },

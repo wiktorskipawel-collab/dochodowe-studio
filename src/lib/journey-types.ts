@@ -21,6 +21,7 @@ export type Step = {
 export type SurveyQuestion = {
   id: string;
   question: string;
+  intro?: string; // co mówi Bartek przed pytaniem
   help?: string;
   options?: { value: string; label: string }[];
   placeholder?: string;

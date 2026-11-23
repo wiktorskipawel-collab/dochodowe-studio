@@ -162,3 +162,50 @@ export function badges(state: JourneyState): Badge[] {
   add("meta", "Meta", "Cała ścieżka zatwierdzona", "trophy", pct >= 100);
   return list;
 }
+
+/** Ostatnie `days` dni: rozmowy, lekcje i praca nad dokumentami — do słupków piętrowych. */
+export function weeklyActivity(events: JourneyEvent[], days = 7, now = new Date()) {
+  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const out: { day: string; label: string; rozmowy: number; lekcje: number; dokumenty: number }[] = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(end);
+    d.setDate(end.getDate() - i);
+    const k = dayKey(d);
+    const evs = events.filter((e) => dayKey(new Date(e.at)) === k);
+    out.push({
+      day: k,
+      label: d.toLocaleDateString("pl-PL", { weekday: "short" }),
+      rozmowy: evs.filter((e) => e.type === "msg").length,
+      lekcje: evs.filter((e) => e.type === "lesson").length,
+      dokumenty: evs.filter((e) => e.type === "draft" || e.type === "approve").length,
+    });
+  }
+  return out;
+}
+
+/** Dzienne XP i liczba działań — do interaktywnego wykresu liniowego. */
+export function dailySeries(events: JourneyEvent[], days = 60, now = new Date()) {
+  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const map = new Map<string, { xp: number; dzialania: number }>();
+  for (const e of events) {
+    const k = dayKey(new Date(e.at));
+    const v = map.get(k) ?? { xp: 0, dzialania: 0 };
+    v.xp += XP[e.type];
+    v.dzialania += 1;
+    map.set(k, v);
+  }
+  const out: { day: string; label: string; xp: number; dzialania: number }[] = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(end);
+    d.setDate(end.getDate() - i);
+    const v = map.get(dayKey(d)) ?? { xp: 0, dzialania: 0 };
+    out.push({ day: dayKey(d), label: d.toLocaleDateString("pl-PL", { day: "numeric", month: "short" }), ...v });
+  }
+  return out;
+}
+
+/** Ile czegoś przybyło w ostatnich 7 dniach (do kart z liczbami). */
+export function lastWeek(events: JourneyEvent[], types: JourneyEvent["type"][], now = new Date()) {
+  const from = now.getTime() - 7 * 24 * 3600 * 1000;
+  return events.filter((e) => types.includes(e.type) && new Date(e.at).getTime() >= from);
+}

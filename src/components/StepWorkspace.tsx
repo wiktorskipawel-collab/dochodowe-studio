@@ -8,6 +8,13 @@ import { useJourney, type ChatMessage } from "@/lib/store";
 import { STEPS, stepStatuses, contextDocs } from "@/lib/journey";
 import { buildManualPrompt } from "@/lib/assistant";
 import { Pill } from "@/components/ui";
+import { toast } from "sonner";
+import { Message, MessageAvatar, MessageContent, MessageHeader } from "@/components/ui/message";
+import { Bubble, BubbleContent } from "@/components/ui/bubble";
+import { Marker, MarkerContent, MarkerIcon } from "@/components/ui/marker";
+import { Spinner } from "@/components/ui/spinner";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { AssistantAvatar, ASSISTANT_NAME } from "@/components/Assistant";
 
 export function StepWorkspace({ stepId }: { stepId: string }) {
   const { ready, state, setChat, saveDoc, toggleWatched } = useJourney();
@@ -202,14 +209,35 @@ function AssistantChat({ stepId, messages, onChange, onDocument }: {
 
   return (
     <>
-      <div className="flex flex-col gap-3" aria-live="polite">
-        {shown.map((m, i) => (
-          <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-            className={`max-w-[680px] whitespace-pre-wrap rounded-2xl px-4 py-3 leading-relaxed ${m.role === "user" ? "self-end rounded-tr-md bg-white text-neutral-900" : "glass-card rounded-tl-md"}`}>
-            {m.role === "assistant" ? <span className="mb-1 block text-xs font-semibold text-brand">Asystent Marketing OS</span> : null}
-            {m.content || (busy && i === shown.length - 1 ? <LoaderCircle className="size-5 animate-spin" aria-label="Asystent pisze" /> : null)}
-          </motion.div>
-        ))}
+      <div className="glass-card flex flex-col gap-5 rounded-2xl p-4 md:p-5" aria-live="polite">
+        {shown.map((m, i) => {
+          const pending = !m.content && busy && i === shown.length - 1;
+          return (
+            <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+              {m.role === "assistant" ? (
+                <Message>
+                  <MessageAvatar><AssistantAvatar size={36} talking={!!pending} /></MessageAvatar>
+                  <MessageContent>
+                    <MessageHeader>{ASSISTANT_NAME} · asystent AI</MessageHeader>
+                    {pending ? (
+                      <Marker role="status"><MarkerIcon><Spinner /></MarkerIcon><MarkerContent className="shimmer">Bartek myśli…</MarkerContent></Marker>
+                    ) : (
+                      <Bubble variant="tinted"><BubbleContent className="whitespace-pre-wrap leading-relaxed">{m.content}</BubbleContent></Bubble>
+                    )}
+                  </MessageContent>
+                </Message>
+              ) : (
+                <Message align="end">
+                  <MessageAvatar><Avatar className="size-9"><AvatarFallback className="bg-green-strong text-xs font-bold text-white">{(state.profile?.name ?? "Ty").slice(0, 2).toUpperCase()}</AvatarFallback></Avatar></MessageAvatar>
+                  <MessageContent>
+                    <Bubble><BubbleContent className="whitespace-pre-wrap leading-relaxed">{m.content}</BubbleContent></Bubble>
+                  </MessageContent>
+                </Message>
+              )}
+            </motion.div>
+          );
+        })}
+        {busy === "document" ? <Marker role="status"><MarkerIcon><Spinner /></MarkerIcon><MarkerContent className="shimmer">Bartek składa dokument z rozmowy…</MarkerContent></Marker> : null}
         <div ref={endRef} />
       </div>
       {error ? <p role="alert" className="rounded-xl border border-red-400/40 bg-red-400/10 px-4 py-3 text-sm text-red-200">{error}</p> : null}
@@ -241,26 +269,44 @@ function ManualMode({ stepId, onPaste }: { stepId: string; onPaste: (t: string) 
     try {
       await navigator.clipboard.writeText(prompt);
       setCopied(true);
+      return true;
     } catch {
       setCopied(false);
+      return false;
     }
+  }
+
+  /** Otwiera prywatny ChatGPT / Claude uczestnika z gotowym poleceniem. Długie polecenie: kopiujemy i prosimy o wklejenie. */
+  async function openIn(base: string, name: string) {
+    const url = base + encodeURIComponent(prompt);
+    if (url.length <= 7500) {
+      window.open(url, "_blank", "noopener");
+      return;
+    }
+    const ok = await copy();
+    window.open(base.replace(/\?q=$/, ""), "_blank", "noopener");
+    toast(ok ? "Polecenie skopiowane" : "Skopiuj polecenie ręcznie", { description: ok ? "Wklej je w " + name + " (Ctrl+V) i wyślij." : "Rozwiń „Zobacz polecenie” poniżej." });
   }
 
   return (
     <div className="glass-card flex flex-col gap-4 rounded-2xl p-5">
-      <h2 className="text-lg font-semibold">Pracujesz w swoim czacie</h2>
-      <ol className="flex list-decimal flex-col gap-1.5 pl-5 text-sm text-white/80">
-        <li>Skopiuj polecenie poniżej. Zawiera metodykę tego kroku i Twoje zatwierdzone dokumenty.</li>
-        <li>Wklej je do ChatGPT albo Claude i odpowiadaj na pytania asystenta.</li>
-        <li>Na końcu czat wypisze gotowy dokument. Wklej go w pole po prawej i zatwierdź.</li>
-      </ol>
+      <div className="flex items-center gap-3">
+        <AssistantAvatar size={44} />
+        <div>
+          <h2 className="text-lg font-bold">Pracujemy w Twoim ChatGPT</h2>
+          <p className="text-sm text-white/70">Jedno kliknięcie: Twój ChatGPT otworzy się z metodyką tego kroku i Twoimi dokumentami.</p>
+        </div>
+      </div>
       <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={copy} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-brand-ink hover:brightness-95">
+        <button type="button" onClick={() => openIn("https://chatgpt.com/?q=", "ChatGPT")} className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-brand px-5 font-bold text-brand-ink shadow-[0_10px_30px_-12px_rgba(221,153,51,.9)] hover:brightness-105">
+          <ExternalLink className="size-4" aria-hidden="true" />Otwórz w moim ChatGPT
+        </button>
+        <button type="button" onClick={() => openIn("https://claude.ai/new?q=", "Claude")} className="inline-flex min-h-12 items-center gap-2 rounded-xl border border-white/20 px-4 text-sm font-semibold hover:bg-white/10">Otwórz w Claude</button>
+        <button type="button" onClick={copy} className="inline-flex min-h-12 items-center gap-2 rounded-xl border border-white/20 px-4 text-sm font-semibold hover:bg-white/10">
           {copied ? <Check className="size-4" aria-hidden="true" /> : <ClipboardCopy className="size-4" aria-hidden="true" />}{copied ? "Skopiowano" : "Kopiuj polecenie"}
         </button>
-        <a href="https://chatgpt.com/" target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/20 px-4 text-sm font-semibold hover:bg-white/10">Otwórz ChatGPT<ExternalLink className="size-3.5" aria-hidden="true" /></a>
-        <a href="https://claude.ai/new" target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/20 px-4 text-sm font-semibold hover:bg-white/10">Otwórz Claude<ExternalLink className="size-3.5" aria-hidden="true" /></a>
       </div>
+      <p className="text-sm text-white/70">Odpowiadaj na pytania w ChatGPT. Na końcu poproś: „Wypisz gotowy dokument”, i wklej go poniżej.</p>
       <details className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm">
         <summary className="cursor-pointer font-medium">Zobacz polecenie</summary>
         <pre className="mt-3 max-h-80 overflow-auto whitespace-pre-wrap text-white/75">{prompt}</pre>

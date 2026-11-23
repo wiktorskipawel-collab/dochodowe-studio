@@ -4,14 +4,12 @@ Platforma, która prowadzi właściciela studia treningowego krok po kroku przez
 
 ## Droga uczestnika
 
-1. **Połącz AI** (`/start`): ChatGPT albo Claude (klucz API uczestnika) albo „Pracuję w swoim czacie” (kopiuje polecenie do ChatGPT Plus / Claude Pro i wkleja wynik).
-2. **Ankieta startowa** (`/ankieta`): 10 pytań → rozpoznanie etapu studia → propozycja ścieżki do akceptacji.
-3. **Ścieżka** (`/sciezka`, `/krok/<id>`): 12 kroków, każdy kończy się dokumentem do zatwierdzenia. Kolejny krok odblokowuje się po zatwierdzeniu poprzedniego:
-   materiały i obraz firmy → diagnoza → DNA studia → awatar → oferta → cel, budżet i czas → strategia i wybór lejka → gotowość lejka → mapa wdrożenia → koncepcje i materiały → analiza wyników → okazje.
-4. **Dokumenty** (`/dokumenty`) i **Lekcje** (`/lekcje`): wszystko, co powstało, i lekcje przypięte do kroków.
-5. **Panel zespołu DS** (`/zespol`): na razie dane przykładowe.
-
-Postęp (procent, kroki, dokumenty, lekcje) widać na pulpicie i w menu.
+1. **Logowanie / rejestracja** (`/logowanie`, `/rejestracja`) — PROTOTYP: konto w tej przeglądarce; docelowo Supabase Auth. „Zobacz demo” wczytuje przykładowy postęp.
+2. **Połącz AI** (`/polacz`): przede wszystkim **prywatny ChatGPT uczestnika** — w każdym kroku „Otwórz w moim ChatGPT” otwiera jego ChatGPT z gotowym poleceniem (`chatgpt.com/?q=`), wynik wraca na platformę. Alternatywy: logowanie przez OpenRouter (OAuth PKCE, asystent działa w aplikacji) albo własny klucz API.
+3. **Ankieta z Bartkiem** (`/ankieta`): asystent (postać Bartka, oznaczona jako AI) prowadzi przez 10 pytań → etap studia → propozycja ścieżki.
+4. **Pulpit** (`/`, układ dashboard-01): poziom i XP, karty z liczbami, wykres kołowy etapów, tydzień (słupki piętrowe), aktywność w czasie (interaktywna linia), ścieżka, mapa aktywności, kompletność dokumentów, odznaki.
+5. **Ścieżka** (`/sciezka`, `/krok/<id>`): 12 kroków, każdy kończy się dokumentem do zatwierdzenia; rozmowa w dymkach z „Bartek myśli…”.
+6. **Dokumenty** i **Lekcje**.
 
 ## Gdzie co jest
 
@@ -21,7 +19,9 @@ Postęp (procent, kroki, dokumenty, lekcje) widać na pulpicie i w menu.
 | `src/lib/assistant.ts` | Wspólne zasady asystenta + składanie instrukcji dla kroku (także polecenie do skopiowania) |
 | `src/lib/ai.ts` | Jedyne połączenie z zewnętrznym AI (OpenAI / Anthropic), po stronie serwera |
 | `src/app/api/assistant/route.ts` | Endpoint asystenta: walidacja, limity, strumień odpowiedzi |
-| `src/lib/store.tsx` | Stan uczestnika. **Prototyp: zapis w przeglądarce (localStorage).** Docelowo Supabase |
+| `src/lib/store.tsx` | Stan uczestnika (konto, postęp, dokumenty, zdarzenia XP). **Prototyp: localStorage.** Docelowo Supabase |
+| `src/lib/gamification.ts` | XP, poziomy, seria dni, odznaki, dane do wykresów |
+| `src/lib/secure-cookie.ts` | Szyfrowane ciasteczko z kluczem AI (AES-GCM, httpOnly) |
 
 ## AI i dane
 

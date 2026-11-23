@@ -15,7 +15,8 @@ export type Reward = { xp: number; title: string; levelUp?: string; big?: boolea
 
 export type JourneyState = {
   version: 1;
-  demo?: boolean; // dane przykładowe z przycisku „Pokaż przykładowy postęp”
+  demo?: boolean; // dane przykładowe z przycisku „Zobacz demo”
+  profile: { name: string; email: string } | null; // PROTOTYP: konto w tej przeglądarce, docelowo Supabase Auth
   ai: { mode: ConnectionMode | null; model: string };
   survey: Record<string, string> | null;
   stage: string | null;
@@ -28,6 +29,7 @@ export type JourneyState = {
 
 const EMPTY: JourneyState = {
   version: 1,
+  profile: null,
   ai: { mode: null, model: "" },
   survey: null,
   stage: null,
@@ -53,6 +55,8 @@ type Ctx = {
   toggleWatched: (lessonId: string) => void;
   reset: () => void;
   loadDemo: () => void;
+  signIn: (profile: { name: string; email: string }) => void;
+  signOut: () => void;
 };
 
 const JourneyContext = createContext<Ctx | null>(null);
@@ -69,7 +73,7 @@ export function JourneyProvider({ children }: { children: ReactNode }) {
         const parsed = JSON.parse(raw) as Partial<JourneyState> & { ai?: { mode?: ConnectionMode | null; model?: string } };
         if (parsed?.version === 1) {
           // eslint-disable-next-line react-hooks/set-state-in-effect -- jednorazowe wczytanie z przeglądarki po zamontowaniu
-          setState({ ...EMPTY, ...parsed, ai: { mode: parsed.ai?.mode ?? null, model: parsed.ai?.model ?? "" }, events: parsed.events ?? [] });
+          setState({ ...EMPTY, ...parsed, ai: { mode: parsed.ai?.mode ?? null, model: parsed.ai?.model ?? "" }, events: parsed.events ?? [], profile: parsed.profile ?? null });
         }
       }
     } catch {
@@ -126,6 +130,8 @@ export function JourneyProvider({ children }: { children: ReactNode }) {
       },
       reset: () => setState(EMPTY),
       loadDemo: () => setState(demoState()),
+      signIn: (profile) => setState((cur) => ({ ...cur, profile })),
+      signOut: () => setState(EMPTY),
     };
   }, [ready, state, reward, commit]);
 

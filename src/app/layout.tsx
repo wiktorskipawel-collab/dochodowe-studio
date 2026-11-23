@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import { Montserrat } from "next/font/google";
-import { Sidebar } from "@/components/Sidebar";
 import { JourneyProvider } from "@/lib/store";
-import { AssistantDock } from "@/components/Assistant";
 import { Celebration } from "@/components/Celebration";
-import "./globals.css";
+import { Spotlight } from "@/components/Spotlight";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
+import "./globals.css";
 
 const montserrat = Montserrat({
   variable: "--font-montserrat",
@@ -15,6 +16,7 @@ const montserrat = Montserrat({
 export const metadata: Metadata = {
   title: "Marketing OS · Dochodowe Studio",
   description: "Platforma, która prowadzi właściciela studia treningowego przez marketing według metodyki Dochodowego Studia.",
+  icons: { icon: "/logo-ds.png" },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -22,12 +24,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="pl" className={cn("dark h-full font-sans", montserrat.variable)}>
       <body className="min-h-full">
         <JourneyProvider>
-          <div className="flex min-h-screen flex-col gap-4 p-3 md:flex-row md:gap-6 md:p-5">
-            <Sidebar />
-            <main className="min-w-0 flex-1 pb-28">{children}</main>
-          </div>
-          <AssistantDock />
-          <Celebration />
+          <TooltipProvider>
+            {children}
+            <Celebration />
+            <Spotlight />
+            <Toaster theme="dark" position="top-center" />
+          </TooltipProvider>
         </JourneyProvider>
       </body>
     </html>

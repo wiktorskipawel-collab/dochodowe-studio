@@ -3,10 +3,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
-import { Bot, Sparkles, ClipboardCopy, Check, KeyRound, ExternalLink, ShieldCheck, LogIn, Unplug, Clock } from "lucide-react";
+import { Bot, Sparkles, Check, KeyRound, ExternalLink, LogIn, Unplug, Clock } from "lucide-react";
 import { useJourney } from "@/lib/store";
 import { PROVIDERS, modelLabel, type Provider } from "@/lib/models";
-import { Pill } from "@/components/ui";
 
 const ERRORS: Record<string, string> = {
   anulowano: "Logowanie zostało anulowane. Spróbuj jeszcze raz, kiedy chcesz.",
@@ -33,11 +32,11 @@ export function AiConnect() {
       setAi({ mode: "openrouter", model });
       // eslint-disable-next-line react-hooks/set-state-in-effect -- jednorazowa reakcja na powrót z logowania
       setNotice({ ok: true, text: `Połączono! Asystent działa na modelu ${modelLabel("openrouter", model)}.` });
-      window.history.replaceState(null, "", "/start");
-      setTimeout(() => router.push(state.survey ? "/sciezka" : "/ankieta"), 1800);
+      window.history.replaceState(null, "", "/polacz");
+      setTimeout(() => router.push(state.survey ? "/" : "/ankieta"), 1800);
     } else if (err) {
       setNotice({ ok: false, text: ERRORS[err] ?? "Coś poszło nie tak. Spróbuj ponownie." });
-      window.history.replaceState(null, "", "/start");
+      window.history.replaceState(null, "", "/polacz");
     }
     // tylko przy pierwszym wczytaniu
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -71,24 +70,21 @@ export function AiConnect() {
         <ConnectedCard onDisconnect={disconnect} />
       ) : null}
 
-      <section aria-labelledby="oneclick-h" className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 id="oneclick-h" className="text-lg font-bold">Zaloguj się jednym kliknięciem</h2>
-          <Pill tone="good"><ShieldCheck className="size-3.5" aria-hidden="true" />Bez kopiowania kluczy</Pill>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          <ProviderTile title="ChatGPT" desc="Modele GPT od OpenAI." model="openai/gpt-5-mini" icon={Bot} gradient="linear-gradient(145deg, rgba(22,163,123,.35), rgba(0,84,63,.15))" />
-          <ProviderTile title="Claude" desc="Modele Claude od Anthropic. Świetne do tekstów." model="anthropic/claude-sonnet-5.5" icon={Sparkles} gradient="linear-gradient(145deg, rgba(221,153,51,.35), rgba(120,70,10,.12))" />
-        </div>
-        <p className="text-sm text-white/70">
-          Logujesz się przez OpenRouter (Google, GitHub albo e-mail) i zatwierdzasz dostęp, tak jak przy łączeniu Kalendarza Google. Jedno konto daje dostęp do GPT i Claude.
-          Płacisz tylko za użycie, a cała ścieżka to zwykle kilka złotych. Klucz ma bezpiecznik 10 $, który zmienisz w ustawieniach OpenRouter.
-        </p>
-        <p className="flex items-center gap-2 text-sm text-white/60"><Clock className="size-4" aria-hidden="true" />Logowanie abonamentem ChatGPT Plus: wkrótce (OpenAI udostępnia je wybranym aplikacjom, złożymy wniosek).</p>
-      </section>
+      <ChatGptFirst />
 
-      <ManualChoice />
-      <OwnKey />
+      <details className="glass-card rounded-2xl p-5">
+        <summary className="flex min-h-11 cursor-pointer items-center gap-2 font-bold"><Bot className="size-5 text-white/70" aria-hidden="true" />Inny sposób: asystent odpowiada bezpośrednio w aplikacji</summary>
+        <div className="mt-4 flex flex-col gap-4">
+          <p className="text-sm text-white/70">
+            Logujesz się jednym kliknięciem przez OpenRouter (Google, GitHub albo e-mail). Jedno konto daje modele GPT i Claude, płacisz tylko za użycie (cała ścieżka to zwykle kilka złotych), klucz ma bezpiecznik 10 $.
+          </p>
+          <div className="grid gap-4 md:grid-cols-2">
+            <ProviderTile title="GPT" desc="Modele OpenAI w aplikacji." model="openai/gpt-5-mini" icon={Bot} gradient="linear-gradient(145deg, rgba(22,163,123,.35), rgba(0,84,63,.15))" />
+            <ProviderTile title="Claude" desc="Modele Anthropic, świetne do tekstów." model="anthropic/claude-sonnet-5.5" icon={Sparkles} gradient="linear-gradient(145deg, rgba(221,153,51,.35), rgba(120,70,10,.12))" />
+          </div>
+          <OwnKey />
+        </div>
+      </details>
     </div>
   );
 }
@@ -121,7 +117,7 @@ function ConnectedCard({ onDisconnect }: { onDisconnect: () => void }) {
     <section className="glass-strong flex flex-col gap-4 rounded-3xl p-6" aria-labelledby="conn-h">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 id="conn-h" className="flex items-center gap-2 text-lg font-bold"><Check className="size-5 text-emerald-300" aria-hidden="true" />
-          {mode === "manual" ? "Pracujesz w swoim czacie" : `Połączono przez ${PROVIDERS[mode].name}`}
+          {mode === "manual" ? "Połączono: Twój prywatny ChatGPT (lub Claude)" : `Połączono przez ${PROVIDERS[mode].name}`}
         </h2>
         <button type="button" onClick={onDisconnect} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/20 px-4 text-sm font-semibold hover:bg-white/10">
           <Unplug className="size-4" aria-hidden="true" />{mode === "manual" ? "Zmień sposób" : "Rozłącz"}
@@ -144,22 +140,34 @@ function ConnectedCard({ onDisconnect }: { onDisconnect: () => void }) {
   );
 }
 
-function ManualChoice() {
+function ChatGptFirst() {
   const { state, setAi } = useJourney();
   const router = useRouter();
+  const choose = () => { setAi({ mode: "manual", model: "" }); router.push(state.survey ? "/" : "/ankieta"); };
   return (
-    <section className="glass-card flex flex-col gap-3 rounded-2xl p-5 md:flex-row md:items-center md:justify-between" aria-labelledby="manual-h">
-      <div className="flex items-start gap-3">
-        <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-white/10"><ClipboardCopy className="size-5" aria-hidden="true" /></span>
-        <div>
-          <h2 id="manual-h" className="font-bold">Mam ChatGPT Plus albo Claude Pro</h2>
-          <p className="text-sm text-white/70">Pracujesz w swoim czacie: kopiujesz gotowe polecenie z metodyką, a wynik wklejasz tutaj. Postęp zapisuje się na platformie.</p>
+    <section aria-labelledby="gpt-h" className="flex flex-col gap-4">
+      <motion.div whileHover={{ y: -6 }} transition={{ type: "spring", stiffness: 380, damping: 24 }}
+        className="glass-strong relative flex flex-col gap-5 overflow-hidden rounded-3xl p-6 md:p-8"
+        style={{ backgroundImage: "linear-gradient(145deg, rgba(22,163,123,.28), rgba(221,153,51,.10))" }}>
+        <div className="flex items-center gap-4">
+          <span className="grid size-16 place-items-center rounded-2xl bg-white/15"><Bot className="size-8" aria-hidden="true" /></span>
+          <div>
+            <h2 id="gpt-h" className="text-2xl font-extrabold">Twój prywatny ChatGPT</h2>
+            <p className="text-white/75">Działa z Twoim kontem, także z abonamentem Plus. Bez kluczy i bez dodatkowych opłat.</p>
+          </div>
         </div>
-      </div>
-      <button type="button" onClick={() => { setAi({ mode: "manual", model: "" }); router.push(state.survey ? "/sciezka" : "/ankieta"); }}
-        className="inline-flex min-h-11 shrink-0 items-center rounded-xl border border-white/25 px-5 font-semibold hover:bg-white/10">
-        Wybieram ten sposób
-      </button>
+        <ol className="grid gap-3 text-sm md:grid-cols-3">
+          {["W każdym kroku klikasz „Otwórz w moim ChatGPT”.", "Twój ChatGPT otwiera się z gotowym poleceniem i metodyką Bartka.", "Wynik wraca na platformę: zatwierdzasz dokument i zbierasz postęp."].map((t, i) => (
+            <li key={t} className="flex gap-3 rounded-xl bg-black/20 p-3"><span className="grid size-7 shrink-0 place-items-center rounded-lg bg-brand text-sm font-extrabold text-brand-ink">{i + 1}</span>{t}</li>
+          ))}
+        </ol>
+        <button type="button" onClick={choose} className="inline-flex min-h-12 w-fit items-center gap-2 rounded-xl bg-brand px-6 text-lg font-bold text-brand-ink shadow-[0_10px_30px_-10px_rgba(221,153,51,.8)] hover:brightness-105">
+          <LogIn className="size-5" aria-hidden="true" />Połącz mój ChatGPT
+        </button>
+      </motion.div>
+      <p className="flex items-start gap-2 text-sm text-white/60"><Clock className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+        Wkrótce: logowanie przez ChatGPT jednym kliknięciem (OpenAI daje je wybranym aplikacjom, składamy wniosek) oraz aplikacja Dochodowe Studio w ChatGPT, która sama zapisze postęp.
+      </p>
     </section>
   );
 }
@@ -182,7 +190,7 @@ function OwnKey() {
     if (!res.ok) return setError(((await res.json()) as { error?: string }).error ?? "Nie udało się zapisać klucza.");
     setApiKey("");
     setAi({ mode: provider, model });
-    router.push(state.survey ? "/sciezka" : "/ankieta");
+    router.push(state.survey ? "/" : "/ankieta");
   }
 
   return (

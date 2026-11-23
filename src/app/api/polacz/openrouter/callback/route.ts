@@ -3,7 +3,7 @@ import { takePkce, writeAiSecret } from "@/lib/secure-cookie";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  const back = (params: Record<string, string>) => Response.redirect(`${url.origin}/start?${new URLSearchParams(params)}`, 302);
+  const back = (params: Record<string, string>) => Response.redirect(`${url.origin}/polacz?${new URLSearchParams(params)}`, 302);
 
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");

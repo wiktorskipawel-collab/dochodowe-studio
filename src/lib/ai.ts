@@ -1,9 +1,10 @@
 // Jedyne miejsce, w którym platforma łączy się z zewnętrznym AI uczestnika (ChatGPT albo Claude).
 // Wszystko inne (ścieżka, postęp, dokumenty, panel) zostaje u nas.
-// Klucz uczestnika przychodzi z jego przeglądarki przy każdym zapytaniu i NIE jest nigdzie zapisywany ani logowany.
+// Klucz uczestnika jest zaszyfrowany w ciasteczku httpOnly (secure-cookie.ts); nie trafia do logów ani do przeglądarki.
 import OpenAI, { APIError as OpenAIError } from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 import type { Provider } from "@/lib/models";
+import { readAiSecret } from "@/lib/secure-cookie";
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -15,11 +16,13 @@ export class AiError extends Error {
   }
 }
 
-/** Klucz: najpierw uczestnika (BYOK), a jeśli go nie podał — klucz platformy z .env.local (np. na pokaz dla Bartka). */
-export function resolveKey(provider: Provider, userKey?: string) {
-  const fromUser = userKey?.trim();
-  if (fromUser) return fromUser;
-  return provider === "openai" ? process.env.OPENAI_API_KEY : process.env.ANTHROPIC_API_KEY;
+/** Klucz: najpierw uczestnika (z zaszyfrowanego ciasteczka), a jeśli go nie ma — klucz platformy z .env.local (np. na pokaz). */
+export async function resolveKey(provider: Provider) {
+  const secret = await readAiSecret();
+  if (secret?.provider === provider) return secret.key;
+  if (provider === "openai") return process.env.OPENAI_API_KEY;
+  if (provider === "anthropic") return process.env.ANTHROPIC_API_KEY;
+  return process.env.OPENROUTER_API_KEY;
 }
 
 const encoder = new TextEncoder();
@@ -33,7 +36,50 @@ export async function streamAssistant(opts: {
   messages: ChatMessage[];
   cacheKey: string;
 }): Promise<ReadableStream<Uint8Array>> {
+  if (opts.provider === "openrouter") return streamOpenRouter(opts);
   return opts.provider === "openai" ? streamOpenAI(opts) : streamClaude(opts);
+}
+
+// OpenRouter: jedno konto uczestnika, modele GPT i Claude, API zgodne z OpenAI (chat completions).
+async function streamOpenRouter(opts: Parameters<typeof streamAssistant>[0]) {
+  const client = new OpenAI({
+    apiKey: opts.apiKey,
+    baseURL: "https://openrouter.ai/api/v1",
+    defaultHeaders: { "X-Title": "Marketing OS · Dochodowe Studio" },
+  });
+  try {
+    const stream = await client.chat.completions.create({
+      model: opts.model,
+      messages: [
+        { role: "system", content: `${opts.staticSystem}\n\n${opts.dynamicSystem}` },
+        ...opts.messages.map((m) => ({ role: m.role, content: m.content })),
+      ],
+      max_tokens: LIMITS.maxOutputTokens,
+      stream: true,
+    });
+    return new ReadableStream<Uint8Array>({
+      async start(controller) {
+        try {
+          for await (const chunk of stream) {
+            const text = chunk.choices[0]?.delta?.content;
+            if (text) controller.enqueue(encoder.encode(text));
+          }
+        } catch {
+          controller.enqueue(encoder.encode("\n\n[Połączenie z AI zostało przerwane. Spróbuj jeszcze raz.]"));
+        } finally {
+          controller.close();
+        }
+      },
+    });
+  } catch (err) {
+    if (err instanceof OpenAIError) {
+      if (err.status === 401) throw new AiError(401, "Połączenie z AI wygasło albo zostało cofnięte. Połącz się ponownie w „Połącz AI”.");
+      if (err.status === 402) throw new AiError(402, "Na Twoim koncie OpenRouter skończyły się środki albo limit klucza. Doładuj konto na openrouter.ai.");
+      if (err.status === 429) throw new AiError(429, "Za dużo zapytań naraz. Spróbuj za chwilę.");
+      if (err.status === 404 || err.status === 400) throw new AiError(400, `Model „${opts.model}” jest teraz niedostępny. Wybierz inny w „Połącz AI”.`);
+    }
+    throw new AiError(502, "Nie udało się połączyć z AI. Spróbuj jeszcze raz za chwilę.");
+  }
 }
 
 async function streamOpenAI(opts: Parameters<typeof streamAssistant>[0]) {

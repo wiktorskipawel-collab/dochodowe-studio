@@ -108,7 +108,7 @@ export function StepWorkspace({ stepId }: { stepId: string }) {
             className="inline-flex min-h-11 items-center rounded-xl border border-white/20 px-4 text-sm font-semibold hover:bg-white/10 disabled:opacity-40">
             Zapisz szkic
           </button>
-          <button type="button" disabled={!docText.trim()} onClick={() => { saveDoc(step.docId, docText, "approved"); setDraft(null); }}
+          <button type="button" disabled={!docText.trim()} onClick={() => { saveDoc(step.docId, docText, "approved", step.docTitle); setDraft(null); }}
             className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-brand-ink hover:brightness-95 disabled:opacity-40">
             <Check className="size-4" aria-hidden="true" />Zatwierdzam dokument
           </button>
@@ -144,7 +144,6 @@ function AssistantChat({ stepId, messages, onChange, onDocument }: {
       body: JSON.stringify({
         provider: state.ai.mode,
         model: state.ai.model,
-        apiKey: state.ai.apiKey,
         stepId,
         mode,
         messages: history,

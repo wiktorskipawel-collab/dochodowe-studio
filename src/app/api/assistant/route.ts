@@ -9,7 +9,6 @@ const plain = (msg: string, status: number) =>
 type Body = {
   provider?: unknown;
   model?: unknown;
-  apiKey?: unknown;
   stepId?: unknown;
   mode?: unknown; // "chat" | "document"
   messages?: unknown;
@@ -54,12 +53,12 @@ export async function POST(request: Request) {
   }
 
   const provider = body.provider;
-  if (provider !== "openai" && provider !== "anthropic") return plain("Najpierw podłącz swoje AI (ChatGPT albo Claude).", 400);
+  if (provider !== "openai" && provider !== "anthropic" && provider !== "openrouter") return plain("Najpierw podłącz swoje AI (ChatGPT albo Claude).", 400);
   const model = typeof body.model === "string" ? body.model : "";
   if (!isAllowedModel(provider as Provider, model)) return plain("Wybierz model z listy w ustawieniach AI.", 400);
 
-  const apiKey = resolveKey(provider, typeof body.apiKey === "string" ? body.apiKey : undefined);
-  if (!apiKey) return plain("Brak klucza do Twojego AI. Wejdź w „Połącz AI” i wklej klucz.", 401);
+  const apiKey = await resolveKey(provider);
+  if (!apiKey) return plain("Twoje AI nie jest połączone. Wejdź w „Połącz AI” i zaloguj się.", 401);
 
   const stepId = typeof body.stepId === "string" ? body.stepId : "";
   const mode = body.mode === "document" ? "document" : "chat";

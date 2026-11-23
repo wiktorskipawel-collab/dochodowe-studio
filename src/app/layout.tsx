@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Montserrat } from "next/font/google";
 import { Sidebar } from "@/components/Sidebar";
 import { JourneyProvider } from "@/lib/store";
+import { AssistantDock } from "@/components/Assistant";
+import { Celebration } from "@/components/Celebration";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 
-const inter = Inter({
-  variable: "--font-inter",
+const montserrat = Montserrat({
+  variable: "--font-montserrat",
   subsets: ["latin", "latin-ext"],
 });
 
@@ -17,13 +19,15 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="pl" className={cn("dark h-full font-sans", inter.variable)}>
+    <html lang="pl" className={cn("dark h-full font-sans", montserrat.variable)}>
       <body className="min-h-full">
         <JourneyProvider>
           <div className="flex min-h-screen flex-col gap-4 p-3 md:flex-row md:gap-6 md:p-5">
             <Sidebar />
-            <main className="min-w-0 flex-1 pb-10">{children}</main>
+            <main className="min-w-0 flex-1 pb-28">{children}</main>
           </div>
+          <AssistantDock />
+          <Celebration />
         </JourneyProvider>
       </body>
     </html>

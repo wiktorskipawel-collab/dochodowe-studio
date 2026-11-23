@@ -121,15 +121,22 @@ body {
   min-height: 100vh;
   color: var(--ink);
   background-color: var(--bg);
-  /* Głęboka zieleń z miękkim światłem w barwach DS. */
+  font-family: var(--font-montserrat), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Tło DS jako osobna, nieruchoma warstwa (tańsze niż background-attachment: fixed — bez przerysowywania przy przewijaniu). */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
   background-image:
     radial-gradient(60rem 40rem at 8% -5%, rgba(0, 127, 95, 0.42), transparent 60%),
     radial-gradient(46rem 30rem at 95% 5%, rgba(221, 153, 51, 0.16), transparent 60%),
     radial-gradient(70rem 48rem at 55% 115%, rgba(0, 112, 84, 0.34), transparent 65%),
     linear-gradient(160deg, #0c2019 0%, #07130f 55%, #040b08 100%);
-  background-attachment: fixed;
-  font-family: var(--font-montserrat), system-ui, sans-serif;
-  -webkit-font-smoothing: antialiased;
 }
 
 @layer components {

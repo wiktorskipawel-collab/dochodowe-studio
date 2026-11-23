@@ -13,7 +13,7 @@ import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartToo
 export function PhasesRadial({ phases }: { phases: { phase: string; pct: number; done: number; total: number }[] }) {
   const keys = phases.map((_, i) => `p${i + 1}`);
   const config = Object.fromEntries([["pct", { label: "Postęp" }], ...phases.map((p, i) => [keys[i], { label: p.phase, color: `var(--phase-${i + 1})` }])]) satisfies ChartConfig;
-  const data = phases.map((p, i) => ({ key: keys[i], pct: Math.max(p.pct, 2), real: p.pct, fill: `var(--color-${keys[i]})` }));
+  const data = phases.map((p, i) => ({ key: keys[i], pct: p.pct, real: p.pct, fill: `var(--color-${keys[i]})` }));
   const best = [...phases].sort((a, b) => b.pct - a.pct)[0];
   return (
     <Card className="flex flex-col">
@@ -23,13 +23,13 @@ export function PhasesRadial({ phases }: { phases: { phase: string; pct: number;
       </CardHeader>
       <CardContent className="flex-1 pb-0">
         <ChartContainer config={config} className="mx-auto aspect-square max-h-[260px]">
-          <RadialBarChart data={data} innerRadius={32} outerRadius={110} startAngle={90} endAngle={-270}>
+          <RadialBarChart data={data} innerRadius={36} outerRadius={116} barSize={11} startAngle={90} endAngle={-270}>
             <PolarAngleAxis type="number" domain={[0, 100]} tick={false} axisLine={false} />
             <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel nameKey="key" formatter={(_v, _n, item) => (
               <span className="flex w-full justify-between gap-4"><span>{config[item.payload.key as string]?.label}</span><strong>{item.payload.real}%</strong></span>
             )} />} />
-            <PolarGrid gridType="circle" stroke="rgba(255,255,255,.08)" />
-            <RadialBar dataKey="pct" background={{ fill: "rgba(255,255,255,.05)" }} cornerRadius={6} />
+            <PolarGrid gridType="circle" stroke="rgba(255,255,255,.06)" />
+            <RadialBar dataKey="pct" background={{ fill: "rgba(255,255,255,.09)" }} cornerRadius={6} />
           </RadialBarChart>
         </ChartContainer>
       </CardContent>

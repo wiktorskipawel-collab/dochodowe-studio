@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="pl" className={cn("dark h-full font-sans", montserrat.variable)}>
+    <html lang="pl" className={cn("dark h-full font-sans", montserrat.variable)} suppressHydrationWarning>
       <body className="min-h-full">
         <JourneyProvider>
           <TooltipProvider>

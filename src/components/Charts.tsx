@@ -115,7 +115,7 @@ export function Heatmap({ cols }: { cols: { key: string; label: string; count: n
     <div className="flex flex-col gap-3">
       <div className="flex gap-2">
         <div className="flex flex-col justify-between py-0.5 text-[10px] text-white/50" aria-hidden="true">{days.map((d, i) => <span key={d} className={i % 2 ? "invisible" : ""}>{d}</span>)}</div>
-        <div className="grid flex-1 gap-[3px]" style={{ gridTemplateColumns: `repeat(${cols.length}, minmax(0, 1fr))` }} role="img" aria-label="Mapa Twojej aktywności w ostatnich tygodniach">
+        <div className="grid flex-1 gap-[3px]" style={{ gridTemplateColumns: `repeat(${cols.length}, minmax(0, 22px))` }} role="img" aria-label="Mapa Twojej aktywności w ostatnich tygodniach">
           {cols.map((col, i) => (
             <div key={i} className="grid gap-[3px]">
               {col.map((d) => (

@@ -68,7 +68,7 @@ export function Home() {
               <AssistantAvatar size={72} talking />
               <div className="min-w-0">
                 <p className="text-xs font-semibold text-brand">{ASSISTANT_NAME} · Twój asystent AI</p>
-                <p className="mt-1 text-lg font-semibold leading-snug md:text-xl"><Typewriter text={`${state.profile?.name ? `${state.profile.name.split(" ")[0]}, ` : ""}${message}`} /></p>
+                <p className="mt-1 text-lg font-semibold leading-snug md:text-xl"><Typewriter text={state.profile?.name ? `${state.profile.name.split(" ")[0]}, ${message.charAt(0).toLowerCase()}${message.slice(1)}` : message} /></p>
                 <p className="mt-1 text-sm text-white/65">{levelHint}</p>
               </div>
             </div>

@@ -25,9 +25,9 @@ Platforma, która prowadzi właściciela studia treningowego krok po kroku przez
 
 ## AI i dane
 
-- AI jest **zewnętrzne i należy do uczestnika**: jego klucz OpenAI albo Anthropic. Uczestnik sam płaci dostawcy za zużycie.
-- Klucz jest w przeglądarce uczestnika i jest wysyłany tylko razem z pytaniem; serwer go nie zapisuje ani nie loguje. OpenAI: `store: false`.
-- Abonamentów ChatGPT Plus / Claude Pro nie da się podłączyć automatycznie (dostawcy na to nie pozwalają) — dlatego tryb „kopiuj polecenie / wklej wynik”.
+- AI jest **zewnętrzne i należy do uczestnika**: jego prywatny ChatGPT/Claude (tryb „Otwórz w moim ChatGPT”) albo jego konto OpenRouter / klucz API. Uczestnik sam płaci dostawcy.
+- Klucz (OpenRouter albo własny) jest zaszyfrowany (AES-GCM) w ciasteczku httpOnly — nie trafia do JavaScriptu strony ani do logów. OpenAI: `store: false`.
+- „Zaloguj przez ChatGPT” (użycie abonamentu przez aplikację) OpenAI udostępnia tylko wybranym partnerom — wymaga wniosku. Docelowo także aplikacja Dochodowe Studio w ChatGPT (Apps SDK / MCP + OAuth).
 - Ścieżka, postęp i dokumenty zostają u nas (docelowo Supabase, Frankfurt).
 
 ## Uruchomienie lokalnie

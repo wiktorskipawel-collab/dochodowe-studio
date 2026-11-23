@@ -28,7 +28,7 @@ export function StepWorkspace({ stepId }: { stepId: string }) {
         <Lock className="size-6 text-white/70" aria-hidden="true" />
         <h2 className="text-xl font-semibold">Ten krok odblokuje się później</h2>
         <p className="text-white/75">Najpierw zatwierdź dokumenty z poprzednich kroków. Kolejność ma znaczenie: każdy krok korzysta z wyników poprzedniego.</p>
-        <Link href="/sciezka" className="inline-flex min-h-11 items-center rounded-xl bg-accent px-5 font-semibold text-accent-ink">Wróć do ścieżki</Link>
+        <Link href="/sciezka" className="inline-flex min-h-11 items-center rounded-xl bg-brand px-5 font-semibold text-brand-ink">Wróć do ścieżki</Link>
       </div>
     );
   }
@@ -58,7 +58,7 @@ export function StepWorkspace({ stepId }: { stepId: string }) {
                 const seen = !!state.watched[l.id];
                 return (
                   <li key={l.id} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
-                    <PlayCircle className="size-5 shrink-0 text-accent" aria-hidden="true" />
+                    <PlayCircle className="size-5 shrink-0 text-brand" aria-hidden="true" />
                     <span className="min-w-0 flex-1 text-sm"><strong className="block font-semibold">{l.title}</strong><span className="text-white/60">{l.source}</span></span>
                     <button type="button" onClick={() => toggleWatched(l.id)} aria-pressed={seen} aria-label={seen ? `Oznacz „${l.title}” jako nieobejrzaną` : `Oznacz „${l.title}” jako obejrzaną`}
                       className={`grid size-11 shrink-0 place-items-center rounded-xl border ${seen ? "border-emerald-400 bg-emerald-400 text-neutral-900" : "border-white/25 text-white/60 hover:border-white/50"}`}>
@@ -82,7 +82,7 @@ export function StepWorkspace({ stepId }: { stepId: string }) {
           <div className="glass-card flex flex-col items-start gap-3 rounded-2xl p-6">
             <h2 className="text-lg font-semibold">Najpierw podłącz swoje AI</h2>
             <p className="text-white/75">Asystent korzysta z Twojego ChatGPT albo Claude. To zajmie minutę.</p>
-            <Link href="/start" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-accent px-5 font-semibold text-accent-ink"><Settings className="size-4" aria-hidden="true" />Połącz AI</Link>
+            <Link href="/start" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand px-5 font-semibold text-brand-ink"><Settings className="size-4" aria-hidden="true" />Połącz AI</Link>
           </div>
         )}
         <p className="text-xs text-white/60">Odpowiedzi tworzy sztuczna inteligencja na podstawie metodyki Dochodowego Studia. Ważne decyzje zatwierdzasz Ty.</p>
@@ -91,7 +91,7 @@ export function StepWorkspace({ stepId }: { stepId: string }) {
       {/* Prawa kolumna: dokument */}
       <section className="glass-card flex flex-col gap-3 rounded-2xl p-5" aria-labelledby="doc-h">
         <div className="flex items-center justify-between gap-2">
-          <h2 id="doc-h" className="flex items-center gap-2 font-semibold"><FileText className="size-5 text-accent" aria-hidden="true" />{step.docTitle}</h2>
+          <h2 id="doc-h" className="flex items-center gap-2 font-semibold"><FileText className="size-5 text-brand" aria-hidden="true" />{step.docTitle}</h2>
           {approved ? <Pill tone="good">Zatwierdzony</Pill> : docText ? <Pill tone="warn">Szkic</Pill> : <Pill>Pusty</Pill>}
         </div>
         <label htmlFor="doc" className="sr-only">Treść dokumentu: {step.docTitle}</label>
@@ -101,7 +101,7 @@ export function StepWorkspace({ stepId }: { stepId: string }) {
           onChange={(e) => setDraft(e.target.value)}
           placeholder={step.docTemplate}
           rows={18}
-          className="min-h-72 w-full resize-y rounded-xl border border-white/15 bg-black/25 p-3 text-sm leading-relaxed text-white placeholder:text-white/35 focus:border-accent focus:outline-none"
+          className="min-h-72 w-full resize-y rounded-xl border border-white/15 bg-black/25 p-3 text-sm leading-relaxed text-white placeholder:text-white/35 focus:border-brand focus:outline-none"
         />
         <div className="flex flex-wrap gap-2">
           <button type="button" disabled={!docText.trim()} onClick={() => { saveDoc(step.docId, docText, "draft"); setDraft(null); }}
@@ -109,7 +109,7 @@ export function StepWorkspace({ stepId }: { stepId: string }) {
             Zapisz szkic
           </button>
           <button type="button" disabled={!docText.trim()} onClick={() => { saveDoc(step.docId, docText, "approved"); setDraft(null); }}
-            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-accent px-4 text-sm font-semibold text-accent-ink hover:brightness-95 disabled:opacity-40">
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-brand-ink hover:brightness-95 disabled:opacity-40">
             <Check className="size-4" aria-hidden="true" />Zatwierdzam dokument
           </button>
         </div>
@@ -207,7 +207,7 @@ function AssistantChat({ stepId, messages, onChange, onDocument }: {
         {shown.map((m, i) => (
           <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
             className={`max-w-[680px] whitespace-pre-wrap rounded-2xl px-4 py-3 leading-relaxed ${m.role === "user" ? "self-end rounded-tr-md bg-white text-neutral-900" : "glass-card rounded-tl-md"}`}>
-            {m.role === "assistant" ? <span className="mb-1 block text-xs font-semibold text-accent">Asystent Marketing OS</span> : null}
+            {m.role === "assistant" ? <span className="mb-1 block text-xs font-semibold text-brand">Asystent Marketing OS</span> : null}
             {m.content || (busy && i === shown.length - 1 ? <LoaderCircle className="size-5 animate-spin" aria-label="Asystent pisze" /> : null)}
           </motion.div>
         ))}
@@ -220,7 +220,7 @@ function AssistantChat({ stepId, messages, onChange, onDocument }: {
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); e.currentTarget.form?.requestSubmit(); } }}
           placeholder="Napisz odpowiedź (Enter wysyła, Shift+Enter nowa linia)"
           className="min-h-11 flex-1 resize-none rounded-xl bg-transparent px-3 py-2 text-white placeholder:text-white/50 focus:outline-none" />
-        <button type="submit" disabled={!!busy || !input.trim()} aria-label="Wyślij" className="grid size-11 shrink-0 place-items-center rounded-xl bg-accent text-accent-ink disabled:opacity-40">
+        <button type="submit" disabled={!!busy || !input.trim()} aria-label="Wyślij" className="grid size-11 shrink-0 place-items-center rounded-xl bg-brand text-brand-ink disabled:opacity-40">
           {busy === "chat" ? <LoaderCircle className="size-5 animate-spin" aria-hidden="true" /> : <Send className="size-5" aria-hidden="true" />}
         </button>
       </form>
@@ -256,7 +256,7 @@ function ManualMode({ stepId, onPaste }: { stepId: string; onPaste: (t: string) 
         <li>Na końcu czat wypisze gotowy dokument. Wklej go w pole po prawej i zatwierdź.</li>
       </ol>
       <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={copy} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-accent px-4 text-sm font-semibold text-accent-ink hover:brightness-95">
+        <button type="button" onClick={copy} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-brand-ink hover:brightness-95">
           {copied ? <Check className="size-4" aria-hidden="true" /> : <ClipboardCopy className="size-4" aria-hidden="true" />}{copied ? "Skopiowano" : "Kopiuj polecenie"}
         </button>
         <a href="https://chatgpt.com/" target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/20 px-4 text-sm font-semibold hover:bg-white/10">Otwórz ChatGPT<ExternalLink className="size-3.5" aria-hidden="true" /></a>
@@ -268,7 +268,7 @@ function ManualMode({ stepId, onPaste }: { stepId: string; onPaste: (t: string) 
       </details>
       <label htmlFor="paste" className="text-sm font-medium">Wklej tu gotowy dokument z czatu</label>
       <textarea id="paste" rows={4} onChange={(e) => onPaste(e.target.value)} placeholder="Wklej wynik — trafi do dokumentu po prawej, gdzie możesz go poprawić i zatwierdzić."
-        className="w-full rounded-xl border border-white/15 bg-black/25 p-3 text-sm text-white placeholder:text-white/40 focus:border-accent focus:outline-none" />
+        className="w-full rounded-xl border border-white/15 bg-black/25 p-3 text-sm text-white placeholder:text-white/40 focus:border-brand focus:outline-none" />
     </div>
   );
 }

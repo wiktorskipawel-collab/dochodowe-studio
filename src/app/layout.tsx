@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import { Sidebar } from "@/components/Sidebar";
 import { JourneyProvider } from "@/lib/store";
 import "./globals.css";
+import { cn } from "@/lib/utils";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -16,7 +17,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="pl" className={`${inter.variable} h-full`}>
+    <html lang="pl" className={cn("dark h-full font-sans", inter.variable)}>
       <body className="min-h-full">
         <JourneyProvider>
           <div className="flex min-h-screen flex-col gap-4 p-3 md:flex-row md:gap-6 md:p-5">

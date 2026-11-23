@@ -22,10 +22,10 @@ export function Home() {
     return (
       <div className="flex flex-col gap-6">
         <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="glass-strong flex flex-col gap-4 rounded-3xl p-6 md:p-10">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-accent">Dochodowe Studio · Marketing OS</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand">Dochodowe Studio · Marketing OS</p>
           <h1 className="max-w-3xl text-3xl font-semibold tracking-tight md:text-5xl">Zbudujmy marketing Twojego studia krok po kroku</h1>
           <p className="max-w-2xl text-lg text-white/75">Asystent poprowadzi Cię metodyką Dochodowego Studia: od rozpoznania etapu, przez awatar i ofertę, po lejek, który przyprowadzi klientów.</p>
-          <Link href={nextItem.href} className="inline-flex min-h-12 w-fit items-center gap-2 rounded-xl bg-accent px-6 text-lg font-semibold text-accent-ink hover:brightness-95">
+          <Link href={nextItem.href} className="inline-flex min-h-12 w-fit items-center gap-2 rounded-xl bg-brand px-6 text-lg font-semibold text-brand-ink hover:brightness-95">
             {items.some((x) => x.done) ? "Kontynuuj" : "Zaczynamy"}<ArrowRight className="size-5" aria-hidden="true" />
           </Link>
         </motion.section>
@@ -61,16 +61,16 @@ export function Home() {
   return (
     <div className="flex flex-col gap-5">
       <header className="flex flex-col gap-1.5">
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-accent">Marketing OS · {stage?.name}</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand">Marketing OS · {stage?.name}</p>
         <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">Twój postęp: {pct}%</h1>
       </header>
 
       {cur ? (
         <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="glass-strong flex flex-col gap-3 rounded-2xl p-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-accent">Następny krok</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand">Następny krok</p>
           <h2 className="text-xl font-semibold md:text-2xl">{cur.no}. {cur.title}</h2>
           <p className="max-w-3xl text-white/75">{cur.goal}</p>
-          <Link href={`/krok/${cur.id}`} className="inline-flex min-h-11 w-fit items-center gap-2 rounded-xl bg-accent px-5 font-semibold text-accent-ink hover:brightness-95">
+          <Link href={`/krok/${cur.id}`} className="inline-flex min-h-11 w-fit items-center gap-2 rounded-xl bg-brand px-5 font-semibold text-brand-ink hover:brightness-95">
             {statuses[cur.id] === "draft" ? "Wróć do pracy" : "Zacznij krok"}<ArrowRight className="size-4" aria-hidden="true" />
           </Link>
         </motion.section>
@@ -93,7 +93,7 @@ export function Home() {
           {STEPS.map((s) => {
             const st = statuses[s.id];
             return (
-              <li key={s.id} className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm ${st === "done" ? "border-transparent bg-emerald-400/15 text-emerald-100" : st === "locked" ? "border-white/10 text-white/50" : "border-accent bg-accent/10"}`}>
+              <li key={s.id} className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm ${st === "done" ? "border-transparent bg-emerald-400/15 text-emerald-100" : st === "locked" ? "border-white/10 text-white/50" : "border-brand bg-brand/10"}`}>
                 <span className="font-semibold tabular-nums">{s.no}</span>{s.title}
               </li>
             );

@@ -20,7 +20,7 @@ export function Lessons() {
           <span className="tabular-nums text-white/75">{watched} / {lessons.length}</span>
         </div>
         <div className="h-2 overflow-hidden rounded-full bg-white/10" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Obejrzane lekcje">
-          <div className="h-full rounded-full bg-accent" style={{ width: `${pct}%` }} />
+          <div className="h-full rounded-full bg-brand" style={{ width: `${pct}%` }} />
         </div>
         <p className="text-sm text-white/65">Pełna biblioteka: 191 lekcji z 5 kursów Skool i 97 mentoringów grupowych. Filmy przeniesiemy z Looma do Bunny Stream (odtwarzanie tylko dla zalogowanych).</p>
       </section>
@@ -35,7 +35,7 @@ export function Lessons() {
               const seen = !!state.watched[l.id];
               return (
                 <li key={l.id} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
-                  <PlayCircle className="size-5 shrink-0 text-accent" aria-hidden="true" />
+                  <PlayCircle className="size-5 shrink-0 text-brand" aria-hidden="true" />
                   <span className="min-w-0 flex-1 text-sm"><strong className="block font-semibold">{l.title}</strong><span className="text-white/60">{l.source}</span></span>
                   <button type="button" onClick={() => toggleWatched(l.id)} aria-pressed={seen} aria-label={seen ? `Oznacz „${l.title}” jako nieobejrzaną` : `Oznacz „${l.title}” jako obejrzaną`}
                     className={`grid size-11 shrink-0 place-items-center rounded-xl border ${seen ? "border-emerald-400 bg-emerald-400 text-neutral-900" : "border-white/25 text-white/60 hover:border-white/50"}`}>

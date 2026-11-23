@@ -53,7 +53,7 @@ export function Pill({ children, tone = "neutral" }: { children: ReactNode; tone
     good: "bg-emerald-400/15 text-emerald-300",
     warn: "bg-amber-400/15 text-amber-300",
     bad: "bg-red-400/15 text-red-300",
-    accent: "bg-accent text-accent-ink",
+    accent: "bg-brand text-brand-ink",
   } as const;
   return <span className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${map[tone]}`}>{children}</span>;
 }
@@ -61,7 +61,7 @@ export function Pill({ children, tone = "neutral" }: { children: ReactNode; tone
 export function PageHeader({ eyebrow, title, children }: { eyebrow: string; title: string; children?: ReactNode }) {
   return (
     <header className="flex flex-col gap-1.5 pb-2">
-      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-accent">{eyebrow}</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand">{eyebrow}</p>
       <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">{title}</h1>
       {children ? <div className="max-w-3xl text-white/75">{children}</div> : null}
     </header>

@@ -12,7 +12,7 @@ const KPI = [
 ];
 
 const ALERT_ICON = { bad: TriangleAlert, warn: BarChart3, accent: Flag } as const;
-const ALERT_COLOR = { bad: "text-red-300", warn: "text-amber-300", accent: "text-accent" } as const;
+const ALERT_COLOR = { bad: "text-red-300", warn: "text-amber-300", accent: "text-brand" } as const;
 
 export default function Zespol() {
   return (

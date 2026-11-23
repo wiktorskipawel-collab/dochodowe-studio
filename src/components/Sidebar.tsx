@@ -26,7 +26,7 @@ export function Sidebar() {
       aria-label="Menu główne"
       className="glass-card flex shrink-0 items-center gap-2 overflow-x-auto rounded-2xl p-2 md:sticky md:top-5 md:h-[calc(100vh-2.5rem)] md:w-[76px] md:flex-col md:overflow-visible md:py-4"
     >
-      <Link href="/" aria-label="Dochodowe Studio, pulpit" className="grid size-11 shrink-0 place-items-center rounded-xl bg-accent text-sm font-extrabold text-accent-ink md:mb-4">
+      <Link href="/" aria-label="Dochodowe Studio, pulpit" className="grid size-11 shrink-0 place-items-center rounded-xl bg-brand text-sm font-extrabold text-brand-ink md:mb-4">
         DS
       </Link>
       <ul className="flex gap-1 md:flex-col">
@@ -55,7 +55,7 @@ export function Sidebar() {
         <div className="relative grid size-11 place-items-center" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Postęp ścieżki">
           <svg viewBox="0 0 36 36" className="absolute inset-0 size-11 -rotate-90" aria-hidden="true">
             <circle cx="18" cy="18" r="15.5" fill="none" stroke="rgba(255,255,255,.15)" strokeWidth="3" />
-            <circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round" strokeDasharray={`${(pct / 100) * 97.4} 97.4`} />
+            <circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--brand)" strokeWidth="3" strokeLinecap="round" strokeDasharray={`${(pct / 100) * 97.4} 97.4`} />
           </svg>
           <span className="text-[11px] font-semibold tabular-nums">{pct}%</span>
         </div>

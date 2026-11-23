@@ -8,5 +8,5 @@
 - Klucze i hasła tylko w `.env.local` / ustawieniach Vercel. Nigdy w repozytorium, w kodzie ani w czacie.
 - Dane w `src/lib/data.ts` są przykładowe. Nie wpisuj do repozytorium prawdziwych danych klientów ani studiów.
 - Materiały źródłowe Bartka (rozmowy z ChatGPT, transkrypcje, audyty, spec) leżą poza repo w `../materialy` i nie trafiają na GitHub.
-- Styl: szklane karty (`glass-card` w `globals.css`), ikony Lucide, animacje Motion (`motion/react`), Tailwind. Akcent w jednym miejscu: `--accent`.
+- Styl: szklane karty (`glass-card` w `globals.css`), ikony Lucide, animacje Motion (`motion/react`), Tailwind. Kolor marki: `--brand` (klasy `bg-brand`, `text-brand`). Gotowe komponenty shadcn/ui (Base UI) w `src/components/ui` — dodawaj je przez `npx shadcn@latest add <nazwa>`; aplikacja działa zawsze w trybie `.dark`. Nazwy `accent`, `primary` itd. należą do shadcn.
 - Przed zakończeniem pracy: `npm run lint` i `npm run build` muszą przejść.

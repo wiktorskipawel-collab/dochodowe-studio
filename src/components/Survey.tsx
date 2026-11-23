@@ -23,7 +23,7 @@ export function Survey() {
     return (
       <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="glass-card flex flex-col gap-5 rounded-2xl p-6 md:p-8">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-accent">Twój etap</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand">Twój etap</p>
           <h2 className="mt-1 text-2xl font-semibold md:text-3xl">{stage.name}</h2>
           <p className="mt-2 max-w-3xl text-white/80">{stage.description}</p>
           <p className="mt-2 max-w-3xl text-white/80"><strong className="text-white">Na czym się skupimy:</strong> {stage.focus}</p>
@@ -45,7 +45,7 @@ export function Survey() {
         </div>
         <div className="flex flex-wrap gap-3">
           <button type="button" onClick={() => { acceptPath(); router.push(`/krok/${stage.steps[0]}`); }}
-            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-accent px-6 font-semibold text-accent-ink hover:brightness-95">
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand px-6 font-semibold text-brand-ink hover:brightness-95">
             <Check className="size-4" aria-hidden="true" />Akceptuję ścieżkę i zaczynam
           </button>
           <button type="button" onClick={() => { setEditing(true); setI(0); setAnswers(state.survey ?? {}); }}
@@ -74,7 +74,7 @@ export function Survey() {
       <div className="flex items-center justify-between gap-3 text-sm text-white/70">
         <span>Pytanie {i + 1} z {SURVEY.length}</span>
         <div className="h-2 w-40 overflow-hidden rounded-full bg-white/10" aria-hidden="true">
-          <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${((i + 1) / SURVEY.length) * 100}%` }} />
+          <div className="h-full rounded-full bg-brand transition-all" style={{ width: `${((i + 1) / SURVEY.length) * 100}%` }} />
         </div>
       </div>
       <AnimatePresence mode="wait">
@@ -85,8 +85,8 @@ export function Survey() {
             <fieldset className="grid gap-2 sm:grid-cols-2">
               <legend className="sr-only">{q.question}</legend>
               {q.options.map((o) => (
-                <label key={o.value} className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 ${value === o.value ? "border-accent bg-accent/10" : "border-white/15 hover:border-white/35"}`}>
-                  <input type="radio" name={q.id} value={o.value} checked={value === o.value} onChange={() => setAnswers({ ...answers, [q.id]: o.value })} className="size-4 accent-[var(--accent)]" />
+                <label key={o.value} className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 ${value === o.value ? "border-brand bg-brand/10" : "border-white/15 hover:border-white/35"}`}>
+                  <input type="radio" name={q.id} value={o.value} checked={value === o.value} onChange={() => setAnswers({ ...answers, [q.id]: o.value })} className="size-4 accent-[var(--brand)]" />
                   <span>{o.label}</span>
                 </label>
               ))}
@@ -95,7 +95,7 @@ export function Survey() {
             <div className="flex flex-col gap-2">
               <label htmlFor={`q-${q.id}`} className="sr-only">{q.question}</label>
               <textarea id={`q-${q.id}`} rows={3} value={value} placeholder={q.placeholder} onChange={(e) => setAnswers({ ...answers, [q.id]: e.target.value })}
-                className="w-full rounded-xl border border-white/15 bg-black/25 p-3 text-white placeholder:text-white/40 focus:border-accent focus:outline-none" />
+                className="w-full rounded-xl border border-white/15 bg-black/25 p-3 text-white placeholder:text-white/40 focus:border-brand focus:outline-none" />
             </div>
           )}
         </motion.div>
@@ -106,7 +106,7 @@ export function Survey() {
           <ArrowLeft className="size-4" aria-hidden="true" />Wstecz
         </button>
         <button type="button" onClick={next} disabled={!value.trim()}
-          className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-accent px-5 font-semibold text-accent-ink hover:brightness-95 disabled:opacity-40">
+          className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand px-5 font-semibold text-brand-ink hover:brightness-95 disabled:opacity-40">
           {last ? "Pokaż mój etap" : "Dalej"}<ArrowRight className="size-4" aria-hidden="true" />
         </button>
       </div>

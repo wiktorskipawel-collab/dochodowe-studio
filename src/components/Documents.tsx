@@ -19,7 +19,7 @@ export function Documents() {
         return (
           <li key={s.id} className={`glass-card flex flex-col gap-3 rounded-2xl p-5 ${locked ? "opacity-60" : ""}`}>
             <div className="flex items-start justify-between gap-3">
-              <h2 className="flex items-center gap-2 font-semibold"><FileText className="size-5 text-accent" aria-hidden="true" />{s.docTitle}</h2>
+              <h2 className="flex items-center gap-2 font-semibold"><FileText className="size-5 text-brand" aria-hidden="true" />{s.docTitle}</h2>
               {doc?.status === "approved" ? <Pill tone="good">Zatwierdzony</Pill> : doc ? <Pill tone="warn">Szkic</Pill> : <Pill>{locked ? "Później" : "Do zrobienia"}</Pill>}
             </div>
             {doc ? (

@@ -34,7 +34,7 @@ export function PathMap() {
           <p className="text-3xl font-semibold tabular-nums">{pct}%</p>
         </div>
         <div className="h-2.5 overflow-hidden rounded-full bg-white/10" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Postęp ścieżki">
-          <motion.div className="h-full rounded-full bg-accent" initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6 }} />
+          <motion.div className="h-full rounded-full bg-brand" initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6 }} />
         </div>
         <div className="flex flex-wrap gap-2 text-sm">
           <Link href="/start" className={`inline-flex min-h-11 items-center gap-2 rounded-xl border px-4 ${state.ai.mode ? "border-emerald-400/40 text-emerald-200" : "border-white/20"}`}>
@@ -56,7 +56,7 @@ export function PathMap() {
               const Icon = st === "done" ? Check : st === "locked" ? Lock : st === "draft" ? PencilLine : ArrowRight;
               const body = (
                 <>
-                  <span className={`grid size-11 shrink-0 place-items-center rounded-xl text-sm font-bold ${st === "done" ? "bg-emerald-400/20 text-emerald-200" : st === "locked" ? "bg-white/5 text-white/50" : "bg-accent text-accent-ink"}`}>
+                  <span className={`grid size-11 shrink-0 place-items-center rounded-xl text-sm font-bold ${st === "done" ? "bg-emerald-400/20 text-emerald-200" : st === "locked" ? "bg-white/5 text-white/50" : "bg-brand text-brand-ink"}`}>
                     {s.no}
                   </span>
                   <span className="flex min-w-0 flex-1 flex-col gap-1">
@@ -75,7 +75,7 @@ export function PathMap() {
                     <div className="glass-card flex gap-4 rounded-2xl p-4 opacity-60">{body}</div>
                   ) : (
                     <motion.div whileHover={{ y: -5 }}>
-                      <Link href={`/krok/${s.id}`} className={`glass-card flex gap-4 rounded-2xl p-4 ${st === "available" || st === "draft" ? "outline outline-1 outline-accent/60" : ""}`}>{body}</Link>
+                      <Link href={`/krok/${s.id}`} className={`glass-card flex gap-4 rounded-2xl p-4 ${st === "available" || st === "draft" ? "outline outline-1 outline-brand/60" : ""}`}>{body}</Link>
                     </motion.div>
                   )}
                 </li>

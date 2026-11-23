@@ -44,12 +44,12 @@ export function AiConnect() {
             <motion.label
               key={m}
               whileHover={{ y: -5 }}
-              className={`glass-card flex cursor-pointer flex-col gap-3 rounded-2xl p-5 ${on ? "outline outline-2 outline-accent" : ""}`}
+              className={`glass-card flex cursor-pointer flex-col gap-3 rounded-2xl p-5 ${on ? "outline outline-2 outline-brand" : ""}`}
             >
               <input type="radio" name="ai-mode" value={m} checked={on} onChange={() => { setMode(m); setSaved(false); }} className="sr-only" />
               <span className="flex items-center justify-between">
                 <span className="grid size-11 place-items-center rounded-xl bg-white/10"><Icon className="size-5" aria-hidden="true" /></span>
-                {on ? <span className="grid size-7 place-items-center rounded-full bg-accent text-accent-ink"><Check className="size-4" aria-hidden="true" /></span> : null}
+                {on ? <span className="grid size-7 place-items-center rounded-full bg-brand text-brand-ink"><Check className="size-4" aria-hidden="true" /></span> : null}
               </span>
               <span className="text-lg font-semibold">{title}</span>
               <span className="text-sm text-white/75">{text}</span>
@@ -65,7 +65,7 @@ export function AiConnect() {
             <legend className="mb-1 text-sm font-medium text-white/80">Model</legend>
             <div className="grid gap-2 md:grid-cols-3">
               {info.models.map((m) => (
-                <label key={m.id} className={`flex min-h-11 cursor-pointer flex-col rounded-xl border px-4 py-3 text-sm ${chosenModel === m.id ? "border-accent bg-accent/10" : "border-white/15 hover:border-white/35"}`}>
+                <label key={m.id} className={`flex min-h-11 cursor-pointer flex-col rounded-xl border px-4 py-3 text-sm ${chosenModel === m.id ? "border-brand bg-brand/10" : "border-white/15 hover:border-white/35"}`}>
                   <input type="radio" name="model" value={m.id} checked={chosenModel === m.id} onChange={() => setModel(m.id)} className="sr-only" />
                   <span className="font-semibold">{m.label}</span>
                   <span className="text-white/65">{m.note}</span>
@@ -75,7 +75,7 @@ export function AiConnect() {
           </fieldset>
           <div className="flex flex-col gap-2">
             <label htmlFor="api-key" className="text-sm font-medium text-white/80">Klucz API</label>
-            <div className="flex items-center gap-2 rounded-xl border border-white/20 bg-black/20 px-3 focus-within:border-accent">
+            <div className="flex items-center gap-2 rounded-xl border border-white/20 bg-black/20 px-3 focus-within:border-brand">
               <KeyRound className="size-4 text-white/60" aria-hidden="true" />
               <input
                 id="api-key"
@@ -92,7 +92,7 @@ export function AiConnect() {
             {keyLooksWrong ? <p role="alert" className="text-sm text-amber-300">Ten klucz nie wygląda na klucz {info.name}. Powinien zaczynać się od „{info.keyPrefix}”.</p> : null}
             <p id="key-help" className="text-sm text-white/65">
               Klucz wygenerujesz na stronie{" "}
-              <a href={info.keyUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-accent underline-offset-2 hover:underline">
+              <a href={info.keyUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-brand underline-offset-2 hover:underline">
                 {new URL(info.keyUrl).hostname}<ExternalLink className="size-3.5" aria-hidden="true" />
               </a>
               . Abonamentu ChatGPT Plus ani Claude Pro nie da się podłączyć automatycznie — OpenAI i Anthropic na to nie pozwalają. Wtedy wybierz „Pracuję w swoim czacie”.
@@ -121,7 +121,7 @@ export function AiConnect() {
           type="button"
           onClick={save}
           disabled={!canSave}
-          className="inline-flex min-h-11 items-center rounded-xl bg-accent px-6 font-semibold text-accent-ink hover:brightness-95 disabled:opacity-40"
+          className="inline-flex min-h-11 items-center rounded-xl bg-brand px-6 font-semibold text-brand-ink hover:brightness-95 disabled:opacity-40"
         >
           Zapisz i przejdź dalej
         </button>

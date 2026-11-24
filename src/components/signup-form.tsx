@@ -2,30 +2,52 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Field, FieldDescription, FieldGroup, FieldLabel, FieldSeparator } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 import { useJourney } from "@/lib/store";
-import { BrandLogo } from "@/components/login-form";
+import { signUpWithPassword, supabaseEnabled } from "@/lib/auth";
+import { BrandLogo, GoogleButton } from "@/components/login-form";
 
 export function SignupForm({ className, ...props }: React.ComponentProps<"div">) {
-  const { signIn } = useJourney();
+  const { state, signIn } = useJourney();
   const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
   const [pass2, setPass2] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [checkMail, setCheckMail] = useState(false);
 
-  function submit(e: FormEvent) {
+  useEffect(() => {
+    if (busy && supabaseEnabled && state.profile?.email === email.trim()) router.push("/polacz");
+  }, [busy, state.profile, email, router]);
+
+  async function submit(e: FormEvent) {
     e.preventDefault();
+    setError(null);
     if (pass.length < 8) return setError("Hasło musi mieć co najmniej 8 znaków.");
     if (pass !== pass2) return setError("Hasła nie są takie same.");
-    signIn({ name: name.trim(), email: email.trim() });
-    router.push("/polacz");
+    if (!supabaseEnabled) {
+      signIn({ name: name.trim(), email: email.trim() });
+      router.push("/polacz");
+      return;
+    }
+    setBusy(true);
+    const r = await signUpWithPassword(name.trim(), email.trim(), pass);
+    if (r.error) {
+      setBusy(false);
+      return setError(r.error);
+    }
+    if (r.needsConfirm) {
+      setBusy(false);
+      setCheckMail(true);
+    }
   }
 
   return (
@@ -33,41 +55,49 @@ export function SignupForm({ className, ...props }: React.ComponentProps<"div">)
       <BrandLogo />
       <Card>
         <CardHeader>
-          <CardTitle className="text-xl">Załóż konto</CardTitle>
-          <CardDescription>Za chwilę Bartek poprowadzi Cię przez krótką ankietę.</CardDescription>
+          <CardTitle className="text-xl">{checkMail ? "Sprawdź skrzynkę" : "Załóż konto"}</CardTitle>
+          <CardDescription>
+            {checkMail ? `Wysłaliśmy link potwierdzający na ${email}. Kliknij go, a od razu przejdziesz do połączenia ChatGPT.` : "Za chwilę Bartek poprowadzi Cię przez krótką ankietę."}
+          </CardDescription>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={submit}>
-            <FieldGroup>
-              <Field>
-                <FieldLabel htmlFor="name">Imię</FieldLabel>
-                <Input id="name" autoComplete="given-name" placeholder="Kasia" required value={name} onChange={(e) => setName(e.target.value)} />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="email">E-mail</FieldLabel>
-                <Input id="email" type="email" autoComplete="email" placeholder="ty@twojestudio.pl" required value={email} onChange={(e) => setEmail(e.target.value)} />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="password">Hasło</FieldLabel>
-                <Input id="password" type="password" autoComplete="new-password" required value={pass} onChange={(e) => setPass(e.target.value)} />
-                <FieldDescription>Co najmniej 8 znaków.</FieldDescription>
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="password2">Powtórz hasło</FieldLabel>
-                <Input id="password2" type="password" autoComplete="new-password" required value={pass2} onChange={(e) => setPass2(e.target.value)} />
-              </Field>
-              {error ? <p role="alert" className="text-sm text-red-300">{error}</p> : null}
-              <Field>
-                <Button type="submit" size="lg" className="font-bold">Załóż konto i zaczynamy</Button>
-                <FieldDescription className="text-center">
-                  Masz już konto? <Link href="/logowanie">Zaloguj się</Link>
-                </FieldDescription>
-              </Field>
-            </FieldGroup>
-          </form>
-        </CardContent>
+        {!checkMail ? (
+          <CardContent>
+            <form onSubmit={submit}>
+              <FieldGroup>
+                <Field>
+                  <GoogleButton label="Zarejestruj się przez Google" onError={setError} />
+                </Field>
+                <FieldSeparator>albo e-mailem</FieldSeparator>
+                <Field>
+                  <FieldLabel htmlFor="name">Imię</FieldLabel>
+                  <Input id="name" autoComplete="given-name" placeholder="Kasia" required value={name} onChange={(e) => setName(e.target.value)} />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="email">E-mail</FieldLabel>
+                  <Input id="email" type="email" autoComplete="email" placeholder="ty@twojestudio.pl" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="password">Hasło</FieldLabel>
+                  <Input id="password" type="password" autoComplete="new-password" required value={pass} onChange={(e) => setPass(e.target.value)} />
+                  <FieldDescription>Co najmniej 8 znaków.</FieldDescription>
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="password2">Powtórz hasło</FieldLabel>
+                  <Input id="password2" type="password" autoComplete="new-password" required value={pass2} onChange={(e) => setPass2(e.target.value)} />
+                </Field>
+                {error ? <p role="alert" className="text-sm text-red-300">{error}</p> : null}
+                <Field>
+                  <Button type="submit" size="lg" className="font-bold" disabled={busy}>{busy ? <Spinner /> : null}Załóż konto i zaczynamy</Button>
+                  <FieldDescription className="text-center">
+                    Masz już konto? <Link href="/logowanie">Zaloguj się</Link>
+                  </FieldDescription>
+                </Field>
+              </FieldGroup>
+            </form>
+          </CardContent>
+        ) : null}
       </Card>
-      <p className="text-center text-xs text-white/50">Wersja testowa: konto zapisuje się tylko w tej przeglądarce. Prawdziwe logowanie dojdzie z bazą danych.</p>
+      {!supabaseEnabled ? <p className="text-center text-xs text-white/50">Wersja testowa: konto zapisuje się tylko w tej przeglądarce.</p> : null}
     </div>
   );
 }

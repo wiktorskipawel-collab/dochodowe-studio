@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { FlameIcon, ZapIcon } from "lucide-react";
+import { FlameIcon, ZapIcon, CloudIcon, CloudAlertIcon } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +20,7 @@ function titleFor(path: string) {
 
 export function SiteHeader() {
   const path = usePathname();
-  const { state } = useJourney();
+  const { state, cloud } = useJourney();
   const xp = xpTotal(state.events);
   const level = levelOf(xp);
   const streak = streakDays(state.events);
@@ -32,6 +32,12 @@ export function SiteHeader() {
         <Separator orientation="vertical" className="mx-2 h-4 data-vertical:self-auto" />
         <h1 className="truncate text-base font-semibold">{titleFor(path)}</h1>
         <div className="ml-auto flex items-center gap-2">
+          {cloud !== "local" && !state.demo ? (
+            <span className={`hidden items-center gap-1.5 text-xs md:inline-flex ${cloud === "error" ? "text-red-300" : "text-white/55"}`} role="status">
+              {cloud === "error" ? <CloudAlertIcon className="size-4" aria-hidden="true" /> : <CloudIcon className="size-4" aria-hidden="true" />}
+              {cloud === "saving" ? "Zapisuję…" : cloud === "saved" ? "Zapisano w chmurze" : "Błąd zapisu"}
+            </span>
+          ) : null}
           <Badge variant="outline" className="hidden gap-1 border-amber-300/40 text-amber-200 sm:inline-flex"><FlameIcon />{streak} {streak === 1 ? "dzień" : "dni"}</Badge>
           <Badge className="gap-1"><ZapIcon />{xp} XP · {level.name}</Badge>
         </div>

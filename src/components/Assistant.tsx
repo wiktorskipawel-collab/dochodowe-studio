@@ -9,7 +9,7 @@ import { X, Sparkles } from "lucide-react";
 import { useJourney } from "@/lib/store";
 import { STEPS } from "@/lib/journey";
 
-export const ASSISTANT_PHOTO: string | null = null;
+export const ASSISTANT_PHOTO: string | null = "/bartek.png"; // TESTOWO — zdjęcie od Pawła; przed startem: zgoda Bartka i lepsze zdjęcie portretowe
 export const ASSISTANT_NAME = "Bartłomiej Sikorski";
 
 export function AssistantAvatar({ size = 56, talking = false }: { size?: number; talking?: boolean }) {

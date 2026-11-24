@@ -15,6 +15,14 @@ const ERRORS: Record<string, string> = {
   siec: "Brak połączenia z OpenRouter. Sprawdź internet i spróbuj ponownie.",
 };
 
+const WROC = "mos:wroc";
+/** Dokąd wrócić po połączeniu: zapamiętany ?wroc=… (np. krok), inaczej pulpit albo ankieta. */
+function backTo(surveyDone: boolean) {
+  const w = sessionStorage.getItem(WROC);
+  sessionStorage.removeItem(WROC);
+  return w && w.startsWith("/") && !w.startsWith("//") ? w : surveyDone ? "/" : "/ankieta";
+}
+
 export function AiConnect() {
   const { ready, state, setAi } = useJourney();
   const router = useRouter();
@@ -25,6 +33,11 @@ export function AiConnect() {
   useEffect(() => {
     if (!ready) return;
     const q = new URLSearchParams(window.location.search);
+    const wroc = q.get("wroc");
+    if (wroc) {
+      sessionStorage.setItem(WROC, wroc);
+      window.history.replaceState(null, "", "/polacz");
+    }
     const ok = q.get("polaczono");
     const err = q.get("blad");
     if (ok === "openrouter") {
@@ -33,7 +46,7 @@ export function AiConnect() {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- jednorazowa reakcja na powrót z logowania
       setNotice({ ok: true, text: `Połączono! Asystent działa na modelu ${modelLabel("openrouter", model)}.` });
       window.history.replaceState(null, "", "/polacz");
-      setTimeout(() => router.push(state.survey ? "/" : "/ankieta"), 1800);
+      setTimeout(() => router.push(backTo(!!state.survey)), 1800);
     } else if (err) {
       setNotice({ ok: false, text: ERRORS[err] ?? "Coś poszło nie tak. Spróbuj ponownie." });
       window.history.replaceState(null, "", "/polacz");
@@ -143,7 +156,7 @@ function ConnectedCard({ onDisconnect }: { onDisconnect: () => void }) {
 function ChatGptFirst() {
   const { state, setAi } = useJourney();
   const router = useRouter();
-  const choose = () => { setAi({ mode: "manual", model: "" }); router.push(state.survey ? "/" : "/ankieta"); };
+  const choose = () => { setAi({ mode: "manual", model: "" }); router.push(backTo(!!state.survey)); };
   return (
     <section aria-labelledby="gpt-h" className="flex flex-col gap-4">
       <motion.div whileHover={{ y: -6 }} transition={{ type: "spring", stiffness: 380, damping: 24 }}
@@ -190,7 +203,7 @@ function OwnKey() {
     if (!res.ok) return setError(((await res.json()) as { error?: string }).error ?? "Nie udało się zapisać klucza.");
     setApiKey("");
     setAi({ mode: provider, model });
-    router.push(state.survey ? "/" : "/ankieta");
+    router.push(backTo(!!state.survey));
   }
 
   return (

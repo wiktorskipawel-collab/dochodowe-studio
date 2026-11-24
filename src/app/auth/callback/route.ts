@@ -22,6 +22,11 @@ export async function GET(request: Request) {
     },
   });
   const { error } = await supabase.auth.exchangeCodeForSession(code);
-  if (error) return fail("sesja");
+  if (error) {
+    console.error("[auth/callback]", error.code ?? error.name, error.message); // bez kodu i ciasteczek
+    // Link potwierdzający z maila (ma ?next=) otwarty np. w innej przeglądarce: adres jest już potwierdzony.
+    if (next) return Response.redirect(`${url.origin}/logowanie?info=potwierdzono`, 302);
+    return fail("sesja");
+  }
   return Response.redirect(`${url.origin}${safeNext}`, 302);
 }

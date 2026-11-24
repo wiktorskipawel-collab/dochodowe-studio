@@ -4,9 +4,9 @@ Platforma, która prowadzi właściciela studia treningowego krok po kroku przez
 
 ## Droga uczestnika
 
-1. **Logowanie / rejestracja** (`/logowanie`, `/rejestracja`) — PROTOTYP: konto w tej przeglądarce; docelowo Supabase Auth. „Zobacz demo” wczytuje przykładowy postęp.
-2. **Połącz AI** (`/polacz`): przede wszystkim **prywatny ChatGPT uczestnika** — w każdym kroku „Otwórz w moim ChatGPT” otwiera jego ChatGPT z gotowym poleceniem (`chatgpt.com/?q=`), wynik wraca na platformę. Alternatywy: logowanie przez OpenRouter (OAuth PKCE, asystent działa w aplikacji) albo własny klucz API.
-3. **Ankieta z Bartkiem** (`/ankieta`): asystent (postać Bartka, oznaczona jako AI) prowadzi przez 10 pytań → etap studia → propozycja ścieżki.
+1. **Logowanie / rejestracja** (`/logowanie`, `/rejestracja`): Supabase Auth (e-mail, Google); bez kluczy konto w tej przeglądarce. „Zobacz demo” wczytuje przykładowy postęp.
+2. **Ankieta z Bartkiem** (`/ankieta`): asystent (postać Bartka, oznaczona jako AI) prowadzi przez 10 pytań → etap studia → propozycja ścieżki.
+3. **Połącz AI** (`/polacz`), dopiero gdy potrzebne (pierwsza rozmowa w kroku): przede wszystkim **prywatny ChatGPT uczestnika** — „Otwórz w moim ChatGPT” otwiera jego ChatGPT z gotowym poleceniem (`chatgpt.com/?q=`), wynik wraca na platformę. Alternatywy: logowanie przez OpenRouter (OAuth PKCE, asystent działa w aplikacji) albo własny klucz API. Po połączeniu wraca do kroku.
 4. **Pulpit** (`/`, układ dashboard-01): poziom i XP, karty z liczbami, wykres kołowy etapów, tydzień (słupki piętrowe), aktywność w czasie (interaktywna linia), ścieżka, mapa aktywności, kompletność dokumentów, odznaki.
 5. **Ścieżka** (`/sciezka`, `/krok/<id>`): 12 kroków, każdy kończy się dokumentem do zatwierdzenia; rozmowa w dymkach z „Bartek myśli…”.
 6. **Dokumenty** i **Lekcje**.

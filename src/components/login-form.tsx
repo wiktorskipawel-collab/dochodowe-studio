@@ -50,29 +50,34 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
 
   useEffect(() => {
-    const blad = new URLSearchParams(window.location.search).get("blad");
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- komunikat po powrocie z logowania Google
+    const q = new URLSearchParams(window.location.search);
+    const blad = q.get("blad");
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- komunikat po powrocie z logowania Google / linku z maila
     if (blad) setError(URL_ERRORS[blad] ?? "Nie udało się zalogować.");
+    if (q.get("info") === "potwierdzono") setInfo("E-mail potwierdzony. Zaloguj się swoim hasłem.");
   }, []);
 
   // Z Supabase: po zalogowaniu czekamy, aż konto i postęp wczytają się z bazy.
   useEffect(() => {
-    if (busy && supabaseEnabled && state.profile?.email === email) router.push("/");
+    if (busy && supabaseEnabled && state.profile?.email.toLowerCase() === email.trim().toLowerCase()) router.push("/");
   }, [busy, state.profile, email, router]);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    setInfo(null);
+    const mail = email.trim().toLowerCase();
     if (!supabaseEnabled) {
-      const known = state.profile?.email === email ? state.profile.name : email.split("@")[0];
-      signIn({ name: known, email });
+      const known = state.profile?.email.toLowerCase() === mail ? state.profile.name : mail.split("@")[0];
+      signIn({ name: known, email: mail });
       router.push("/");
       return;
     }
     setBusy(true);
-    const r = await signInWithPassword(email, password);
+    const r = await signInWithPassword(mail, password);
     if (r.error) {
       setBusy(false);
       setError(r.error);
@@ -102,6 +107,7 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
                 <FieldLabel htmlFor="password">Hasło</FieldLabel>
                 <Input id="password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
               </Field>
+              {info ? <p role="status" className="rounded-xl border border-emerald-400/40 bg-emerald-400/10 px-3 py-2 text-sm text-emerald-100">{info}</p> : null}
               {error ? <p role="alert" className="text-sm text-red-300">{error}</p> : null}
               <Field>
                 <Button type="submit" size="lg" className="font-bold" disabled={busy}>{busy ? <Spinner /> : null}Zaloguj się</Button>

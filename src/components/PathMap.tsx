@@ -37,8 +37,8 @@ export function PathMap() {
           <motion.div className="h-full rounded-full bg-brand" initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6 }} />
         </div>
         <div className="flex flex-wrap gap-2 text-sm">
-          <Link href="/start" className={`inline-flex min-h-11 items-center gap-2 rounded-xl border px-4 ${state.ai.mode ? "border-emerald-400/40 text-emerald-200" : "border-white/20"}`}>
-            {state.ai.mode ? <Check className="size-4" aria-hidden="true" /> : <PlugZap className="size-4" aria-hidden="true" />}Połączone AI
+          <Link href="/polacz" className={`inline-flex min-h-11 items-center gap-2 rounded-xl border px-4 ${state.ai.mode ? "border-emerald-400/40 text-emerald-200" : "border-white/20"}`}>
+            {state.ai.mode ? <Check className="size-4" aria-hidden="true" /> : <PlugZap className="size-4" aria-hidden="true" />}{state.ai.mode ? "Połączone AI" : "Połącz AI"}
           </Link>
           <Link href="/ankieta" className={`inline-flex min-h-11 items-center gap-2 rounded-xl border px-4 ${state.survey ? "border-emerald-400/40 text-emerald-200" : "border-white/20"}`}>
             {state.survey ? <Check className="size-4" aria-hidden="true" /> : <ClipboardList className="size-4" aria-hidden="true" />}Ankieta i etap

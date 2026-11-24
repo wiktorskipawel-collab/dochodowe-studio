@@ -25,7 +25,7 @@ export function SignupForm({ className, ...props }: React.ComponentProps<"div">)
   const [checkMail, setCheckMail] = useState(false);
 
   useEffect(() => {
-    if (busy && supabaseEnabled && state.profile?.email === email.trim()) router.push("/polacz");
+    if (busy && supabaseEnabled && state.profile?.email.toLowerCase() === email.trim().toLowerCase()) router.push("/ankieta");
   }, [busy, state.profile, email, router]);
 
   async function submit(e: FormEvent) {
@@ -33,13 +33,14 @@ export function SignupForm({ className, ...props }: React.ComponentProps<"div">)
     setError(null);
     if (pass.length < 8) return setError("Hasło musi mieć co najmniej 8 znaków.");
     if (pass !== pass2) return setError("Hasła nie są takie same.");
+    const mail = email.trim().toLowerCase();
     if (!supabaseEnabled) {
-      signIn({ name: name.trim(), email: email.trim() });
-      router.push("/polacz");
+      signIn({ name: name.trim(), email: mail });
+      router.push("/ankieta");
       return;
     }
     setBusy(true);
-    const r = await signUpWithPassword(name.trim(), email.trim(), pass);
+    const r = await signUpWithPassword(name.trim(), mail, pass);
     if (r.error) {
       setBusy(false);
       return setError(r.error);
@@ -57,7 +58,7 @@ export function SignupForm({ className, ...props }: React.ComponentProps<"div">)
         <CardHeader>
           <CardTitle className="text-xl">{checkMail ? "Sprawdź skrzynkę" : "Załóż konto"}</CardTitle>
           <CardDescription>
-            {checkMail ? `Wysłaliśmy link potwierdzający na ${email}. Kliknij go, a od razu przejdziesz do połączenia ChatGPT.` : "Za chwilę Bartek poprowadzi Cię przez krótką ankietę."}
+            {checkMail ? `Wysłaliśmy link potwierdzający na ${email}. Kliknij go, a od razu przejdziesz do ankiety z Bartkiem.` : "Za chwilę Bartek poprowadzi Cię przez krótką ankietę."}
           </CardDescription>
         </CardHeader>
         {!checkMail ? (

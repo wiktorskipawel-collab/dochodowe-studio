@@ -87,9 +87,9 @@ export function StepWorkspace({ stepId }: { stepId: string }) {
           <AssistantChat stepId={stepId} messages={state.chats[stepId] ?? []} onChange={(m) => setChat(stepId, m)} onDocument={(t) => setDraft(t)} />
         ) : (
           <div className="glass-card flex flex-col items-start gap-3 rounded-2xl p-6">
-            <h2 className="text-lg font-semibold">Najpierw podłącz swoje AI</h2>
-            <p className="text-white/75">Asystent korzysta z Twojego ChatGPT albo Claude. To zajmie minutę.</p>
-            <Link href="/start" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand px-5 font-semibold text-brand-ink"><Settings className="size-4" aria-hidden="true" />Połącz AI</Link>
+            <h2 className="text-lg font-semibold">Połącz swój ChatGPT, żeby zacząć rozmowę</h2>
+            <p className="text-white/75">W tym kroku asystent zadaje pytania i pomaga napisać dokument. Korzysta z Twojego ChatGPT albo Claude. Jedno kliknięcie i wracasz tutaj.</p>
+            <Link href={`/polacz?wroc=/krok/${stepId}`} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand px-5 font-semibold text-brand-ink"><Settings className="size-4" aria-hidden="true" />Połącz ChatGPT</Link>
           </div>
         )}
         <p className="text-xs text-white/60">Odpowiedzi tworzy sztuczna inteligencja na podstawie metodyki Dochodowego Studia. Ważne decyzje zatwierdzasz Ty.</p>

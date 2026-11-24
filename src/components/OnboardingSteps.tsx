@@ -7,10 +7,11 @@ import { useJourney } from "@/lib/store";
 export function OnboardingSteps() {
   const path = usePathname();
   const { state } = useJourney();
+  if (!path.startsWith("/ankieta")) return null; // „Połącz AI” to już nie etap wejścia, tylko ustawienie
   const steps = [
     { label: "Konto", done: !!state.profile, on: false },
-    { label: "Połącz AI", done: !!state.ai.mode, on: path.startsWith("/polacz") },
-    { label: "Ankieta", done: !!state.survey && state.pathAccepted, on: path.startsWith("/ankieta") },
+    { label: "Ankieta z Bartkiem", done: !!state.survey, on: !state.survey },
+    { label: "Twoja ścieżka", done: state.pathAccepted, on: !!state.survey && !state.pathAccepted },
   ];
   return (
     <ol className="flex items-center gap-2 text-sm" aria-label="Kroki wejścia">

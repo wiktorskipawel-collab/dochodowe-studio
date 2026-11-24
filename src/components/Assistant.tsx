@@ -64,8 +64,7 @@ export const GREETING = `Cześć! Tu ${ASSISTANT_NAME}, a dokładniej mój asyst
 
 function messageFor(path: string): string | null {
   if (path === "/") return null; // na pulpicie asystent mówi w głównej karcie
-  if (path.startsWith("/zespol")) return null;
-  if (path.startsWith("/start")) return "Połącz swoje AI jednym kliknięciem. Zajmie to minutę, a potem poprowadzę Cię krok po kroku.";
+  if (path.startsWith("/polacz")) return "Połącz swój ChatGPT jednym kliknięciem. Potem wracamy do pracy nad krokiem.";
   if (path.startsWith("/ankieta")) return "Odpowiadaj szczerze. Na tej podstawie dobiorę Twoją ścieżkę. Nie ma złych odpowiedzi.";
   if (path.startsWith("/sciezka")) return "Każdy zatwierdzony dokument to cegła w Twoim marketingu. Idziemy po kolei, bez skakania.";
   if (path.startsWith("/dokumenty")) return "Tu masz wszystko, co już zbudowałeś. Wracaj tu, kiedy potrzebujesz konkretów.";
@@ -75,18 +74,22 @@ function messageFor(path: string): string | null {
   return null;
 }
 
-/** Pływający asystent w prawym dolnym rogu, z podpowiedzią do bieżącego ekranu. */
-export function AssistantDock() {
+/**
+ * Pływający asystent w prawym dolnym rogu, z podpowiedzią do bieżącego ekranu.
+ * Kliknięcie postaci przywołuje Bartka na środek (onSummon). Gdy scena jest otwarta, dok się chowa,
+ * a wspólny layoutId sprawia, że postać przelatuje między rogiem a środkiem.
+ */
+export function AssistantDock({ hidden = false, onSummon }: { hidden?: boolean; onSummon?: () => void }) {
   const path = usePathname();
   const { ready } = useJourney();
   const msg = messageFor(path);
   const [closedFor, setClosedFor] = useState<string | null>(null);
-  const visible = ready && !!msg && closedFor !== path;
+  const visible = ready && !hidden && !!msg && closedFor !== path;
 
-  if (!ready || !msg) return null;
+  if (!ready) return null;
 
   return (
-    <div className="pointer-events-none fixed bottom-4 right-4 z-40 flex max-w-[calc(100vw-2rem)] items-end gap-3 md:bottom-6 md:right-6">
+    <div className="pointer-events-none fixed bottom-4 right-4 z-[65] flex max-w-[calc(100vw-2rem)] items-end gap-3 md:bottom-6 md:right-6">
       <AnimatePresence>
         {visible ? (
           <motion.div
@@ -105,9 +108,20 @@ export function AssistantDock() {
           </motion.div>
         ) : null}
       </AnimatePresence>
-      <button type="button" onClick={() => setClosedFor(null)} aria-label={`Pokaż podpowiedź asystenta (${ASSISTANT_NAME}, AI)`} className="pointer-events-auto rounded-full">
-        <AssistantAvatar size={60} talking={visible} />
-      </button>
+      {!hidden ? (
+        <motion.button
+          layoutId="bartek-avatar"
+          type="button"
+          onClick={onSummon ?? (() => setClosedFor(null))}
+          aria-label={`Przywołaj asystenta (${ASSISTANT_NAME}, AI)`}
+          className="pointer-events-auto rounded-full"
+          whileHover={{ scale: 1.08, y: -3 }}
+          whileTap={{ scale: 0.95 }}
+          transition={{ type: "spring", stiffness: 210, damping: 24 }}
+        >
+          <AssistantAvatar size={60} talking={visible} />
+        </motion.button>
+      ) : null}
     </div>
   );
 }

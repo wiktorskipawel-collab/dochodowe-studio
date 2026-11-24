@@ -47,6 +47,18 @@ const EMPTY: JourneyState = {
 
 const KEY = "marketing-os:v1";
 
+/** Data ostatniego powitania Bartka (scena na środku). Wylogowanie ustawia „out”, żeby po zalogowaniu przywitał znowu. */
+export const helloKey = (email: string) => `mos:hello:${email}`;
+const forgetHello = (email: string | undefined, value: string | null) => {
+  if (!email) return;
+  try {
+    if (value === null) localStorage.removeItem(helloKey(email));
+    else localStorage.setItem(helloKey(email), value);
+  } catch {
+    // brak dostępu do localStorage: powitanie pokaże się po prostu częściej
+  }
+};
+
 export type CloudStatus = "local" | "saving" | "saved" | "error";
 
 type Ctx = {
@@ -190,10 +202,15 @@ export function JourneyProvider({ children }: { children: ReactNode }) {
         commit(s, next, on && once("lesson", lessonId) ? { type: "lesson", ref: lessonId } : undefined, on && once("lesson", lessonId) ? "Lekcja obejrzana" : undefined);
       },
       reset: () => setState(EMPTY),
-      loadDemo: () => setState(demoState()),
+      loadDemo: () => {
+        const demo = demoState();
+        forgetHello(demo.profile?.email, null); // demo zawsze zaczyna się pełnym przywitaniem
+        setState(demo);
+      },
       // Nowa osoba albo wyjście z demo = czysta ścieżka, żeby zawsze przeszła wejście (Połącz AI → ankieta).
       signIn: (profile) => setState((cur) => (cur.demo || !cur.profile || cur.profile.email !== profile.email ? { ...EMPTY, profile } : { ...cur, profile })),
       signOut: () => {
+        forgetHello(s.profile?.email, "out");
         userId.current = null;
         void signOutRemote();
         setState(EMPTY);

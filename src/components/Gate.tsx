@@ -1,6 +1,7 @@
 "use client";
 
-// Pilnuje kolejności wejścia: konto → połączenie AI → ankieta → pulpit.
+// Pilnuje kolejności wejścia: konto → ankieta → pulpit.
+// Połączenie AI nie blokuje wejścia — prosimy o nie dopiero w kroku, gdy asystent ma rozmawiać.
 import { useEffect, type ReactNode } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useJourney } from "@/lib/store";
@@ -10,14 +11,8 @@ export type GateLevel = "auth" | "onboarding" | "app";
 
 export function requiredPath(level: GateLevel, s: ReturnType<typeof useJourney>["state"], path: string): string | null {
   if (!s.profile) return "/logowanie";
-  if (level === "onboarding") {
-    if (path.startsWith("/ankieta") && !s.ai.mode) return "/polacz";
-    return null;
-  }
-  if (level === "app") {
-    if (!s.ai.mode) return "/polacz";
-    if (!s.survey || !s.pathAccepted) return "/ankieta";
-  }
+  void path;
+  if (level === "app" && (!s.survey || !s.pathAccepted)) return "/ankieta";
   return null;
 }
 

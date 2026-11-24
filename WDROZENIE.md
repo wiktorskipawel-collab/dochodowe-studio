@@ -10,6 +10,7 @@ Klucze i hasła wklejasz tylko w panelach Supabase/Vercel i w pliku `.env.local`
    - Hasło bazy: wygeneruj i zapisz w menedżerze haseł.
 2. **SQL Editor** → **New query** → wklej całą zawartość pliku `supabase/migrations/0001_journeys.sql` → **Run**.
    Powstaje tabela `journeys`, w której każdy uczestnik widzi tylko swój postęp.
+   Potem tak samo plik `supabase/migrations/0002_journeys_grants.sql` (nowe projekty Supabase nie udostępniają tabel automatycznie).
 3. **Project Settings → API Keys**: skopiuj **Project URL** i **Publishable key** do `.env.local`:
    ```
    NEXT_PUBLIC_SUPABASE_URL=...
@@ -45,8 +46,9 @@ Od tej chwili przycisk „Kontynuuj z Google” otwiera wybór konta Google i wr
 
 ## 4. Sprawdzenie
 
-- Rejestracja e-mailem → przychodzi mail z potwierdzeniem → link wraca do „Połącz AI”.
-- „Kontynuuj z Google” → wybór konta → „Połącz AI” → ankieta z Bartkiem → pulpit.
+- Rejestracja e-mailem → przychodzi mail z potwierdzeniem → link wraca do ankiety z Bartkiem → pulpit.
+- „Kontynuuj z Google” → wybór konta → ankieta z Bartkiem → pulpit.
+- W kroku ścieżki: „Połącz ChatGPT” → po połączeniu powrót do tego samego kroku.
 - W nagłówku pulpitu: „Zapisano w chmurze”. Postęp zostaje po zalogowaniu na innym komputerze.
 
 ## Uwagi

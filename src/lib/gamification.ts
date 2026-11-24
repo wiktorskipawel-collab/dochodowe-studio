@@ -39,7 +39,7 @@ export function levelOf(xp: number) {
   return { index: i + 1, name: cur.name, min: cur.min, next: next?.min ?? null, nextName: next?.name ?? null, pct };
 }
 
-const dayKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+export const dayKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 /** Ile zdarzeń było każdego dnia (lokalny czas). */
 export function activityByDay(events: JourneyEvent[]) {

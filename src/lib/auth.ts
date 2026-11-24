@@ -24,7 +24,7 @@ export async function signInWithPassword(email: string, password: string): Promi
 export async function signUpWithPassword(name: string, email: string, password: string): Promise<{ error?: string; needsConfirm?: boolean }> {
   const sb = getSupabase();
   if (!sb) return {};
-  const { data, error } = await sb.auth.signUp({ email, password, options: { data: { full_name: name }, emailRedirectTo: `${callback()}?next=/polacz` } });
+  const { data, error } = await sb.auth.signUp({ email, password, options: { data: { full_name: name }, emailRedirectTo: `${callback()}?next=/ankieta` } });
   if (error) return { error: pl(error.message) };
   return { needsConfirm: !data.session };
 }

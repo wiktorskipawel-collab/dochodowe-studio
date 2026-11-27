@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import {
   LayoutDashboardIcon, RouteIcon, FileTextIcon, PlayCircleIcon, PlugZapIcon, LogOutIcon, EllipsisVerticalIcon, FlameIcon,
-  DnaIcon, UserRoundIcon, GemIcon, TargetIcon, UserPlusIcon, ClapperboardIcon, FilmIcon, MousePointerClickIcon, CheckIcon, CompassIcon, Volume2Icon, VolumeXIcon,
+  DnaIcon, UserRoundIcon, GemIcon, TargetIcon, ClapperboardIcon, FilmIcon, MousePointerClickIcon, CheckIcon, PhoneCallIcon, HeadsetIcon, SparklesIcon, StoreIcon, FileSignatureIcon, DumbbellIcon, LibraryIcon, CompassIcon, Volume2Icon, VolumeXIcon,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -38,14 +38,23 @@ const MARKETING: Item[] = [
   { title: "DNA studia", url: "/dokumenty#dna", icon: DnaIcon, doc: "dna" },
   { title: "Awatar klienta", url: "/dokumenty#awatar", icon: UserRoundIcon, doc: "awatar" },
   { title: "Oferta", url: "/dokumenty#oferta", icon: GemIcon, doc: "oferta" },
+  { title: "Obsługa zgłoszeń", url: "/dokumenty#sprzedaz", icon: PhoneCallIcon, doc: "sprzedaz" },
   { title: "Strategia", url: "/dokumenty#strategia", icon: TargetIcon, doc: "strategia" },
   { title: "Wszystkie dokumenty", url: "/dokumenty", icon: FileTextIcon },
 ];
 const ACTIONS: Item[] = [
-  { title: "Nowy awatar", url: "/narzedzia#nowy-awatar", icon: UserPlusIcon },
-  { title: "Scenariusz VSL", url: "/narzedzia#vsl", icon: ClapperboardIcon },
-  { title: "Nowe rolki", url: "/narzedzia#rolki", icon: FilmIcon },
-  { title: "Analiza CTR reklam", url: "/narzedzia#ctr", icon: MousePointerClickIcon },
+  { title: "Asystent sprzedaży", url: "/narzedzia/asystent-sprzedazy", icon: HeadsetIcon },
+  { title: "Analiza reklam", url: "/narzedzia/ctr", icon: MousePointerClickIcon },
+  { title: "Nowe rolki", url: "/narzedzia/rolki", icon: FilmIcon },
+  { title: "Scenariusz VSL", url: "/narzedzia/vsl", icon: ClapperboardIcon },
+  { title: "Wszystkie narzędzia AI", url: "/narzedzia", icon: SparklesIcon },
+];
+// Moduły studia poza ścieżką (decyzja Pawła 2026-11-27: platforma obejmuje cały program DS).
+const STUDIO: Item[] = [
+  { title: "Lokal i otwarcie", url: "/lokal", icon: StoreIcon },
+  { title: "Kursy Bartka", url: "/lekcje#kursy", icon: LibraryIcon },
+  { title: "Dla trenerów zespołu", url: "/lekcje#zespol", icon: DumbbellIcon },
+  { title: "Wzory dokumentów", url: "/dokumenty#wzory", icon: FileSignatureIcon },
 ];
 
 export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
@@ -59,6 +68,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
 
   const isActive = (url: string) => {
     if (url.includes("#")) return false; // skróty do miejsc na stronie nie podświetlają się na stałe
+    if (url === "/narzedzia") return path === "/narzedzia";
     return url === "/" ? path === "/" : path.startsWith(url) || (url === "/sciezka" && path.startsWith("/krok"));
   };
 
@@ -82,7 +92,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                 <SidebarMenuButton
                   tooltip={item.title}
                   isActive={active}
-                  render={<Link href={item.url} />}
+                  render={<Link href={item.url} onClick={item.url.includes("#") ? () => setTimeout(() => window.dispatchEvent(new HashChangeEvent("hashchange")), 50) : undefined} />}
                   className={`relative z-10 h-10 bg-transparent hover:bg-transparent active:bg-transparent data-active:bg-transparent ${active ? "font-bold text-brand-ink hover:text-brand-ink data-active:text-brand-ink" : ""}`}
                 >
                   <item.icon />
@@ -111,6 +121,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
         {group("Ścieżka", PATH, "nav-path")}
         {group("Mój marketing", MARKETING, "nav-marketing")}
         {group("Szybkie akcje", ACTIONS, "nav-actions")}
+        {group("Studio", STUDIO, "nav-studio")}
 
         <SidebarGroup className="mt-auto">
           <div className="glass-card flex items-center gap-3 rounded-2xl p-3">

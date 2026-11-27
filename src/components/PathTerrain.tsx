@@ -9,14 +9,15 @@ import { useGSAP } from "@gsap/react";
 import { motion, useReducedMotion } from "motion/react";
 import {
   Check, Lock, FolderOpen, Stethoscope, Dna, UserRound, Gem, Wallet, Target, ShieldCheck, CalendarRange, Clapperboard,
-  ChartColumn, Sparkles, CircleDot, type LucideIcon,
+  ChartColumn, Sparkles, CircleDot, PhoneCall, HeartHandshake, type LucideIcon,
 } from "lucide-react";
 import { VW, VH, TERRAIN, layout } from "@/lib/terrain";
 import type { Step, StepStatus } from "@/lib/journey-types";
 
 export const STEP_ICON: Record<string, LucideIcon> = {
-  materialy: FolderOpen, diagnoza: Stethoscope, dna: Dna, awatar: UserRound, oferta: Gem, "cel-budzet": Wallet,
-  strategia: Target, gotowosc: ShieldCheck, plan: CalendarRange, "materialy-lejka": Clapperboard, wyniki: ChartColumn, okazje: Sparkles,
+  materialy: FolderOpen, diagnoza: Stethoscope, dna: Dna, awatar: UserRound, oferta: Gem, "cel-budzet": Wallet, sprzedaz: PhoneCall,
+  strategia: Target, gotowosc: ShieldCheck, "materialy-lejka": Clapperboard, plan: CalendarRange, wyniki: ChartColumn, okazje: Sparkles,
+  utrzymanie: HeartHandshake,
 };
 /** Ikona kroku (z mapy STEP_ICON). */
 export function StepIcon({ id, className }: { id: string; className?: string }) {
@@ -26,7 +27,8 @@ export function StepIcon({ id, className }: { id: string; className?: string }) 
 
 const SHORT: Record<string, string> = {
   materialy: "Materiały", diagnoza: "Diagnoza", dna: "DNA studia", awatar: "Awatar", oferta: "Oferta", "cel-budzet": "Cel i budżet",
-  strategia: "Strategia", gotowosc: "Gotowość lejka", plan: "Plan wdrożenia", "materialy-lejka": "Materiały lejka", wyniki: "Wyniki", okazje: "Okazje",
+  sprzedaz: "Obsługa zgłoszeń", strategia: "Strategia", gotowosc: "Gotowość", "materialy-lejka": "Gotowce", plan: "Plan",
+  wyniki: "Przegląd", okazje: "Okazje", utrzymanie: "Utrzymanie",
 };
 export const shortTitle = (s: Step) => SHORT[s.id] ?? s.title;
 export const phaseName = (phase: string) => phase.replace(/\s*\(.*\)$/, "");

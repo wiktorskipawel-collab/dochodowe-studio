@@ -1,6 +1,15 @@
 // Typy ścieżki Marketing OS (treść w journey.ts).
 
-export type Lesson = { id: string; title: string; source: string; video?: string }; // video: adres odtwarzacza (Bunny Stream)
+export type Lesson = {
+  id: string;
+  title: string;
+  source: string;
+  video?: string; // adres odtwarzacza do osadzenia (Loom / YouTube / Bunny Stream)
+  skool?: string; // link do lekcji na Skool („Otwórz na Skool”)
+  attachments?: string[]; // nazwy materiałów do lekcji (pliki są na Skool)
+  opis?: string; // 1 zdanie o lekcji
+  ref?: string; // id lekcji w bibliotece kursów (src/lib/kursy.ts), żeby „obejrzane” było wspólne
+};
 
 export type Step = {
   id: string; // adres: /krok/<id>

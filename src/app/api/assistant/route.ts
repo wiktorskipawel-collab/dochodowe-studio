@@ -1,8 +1,10 @@
 // Asystent Marketing OS: przeglądarka → nasz serwer → AI (platformy albo uczestnika) → strumień tekstu.
+// Dwa tryby: krok ścieżki (`stepId`) albo szybka akcja z /narzedzia (`tool`, instrukcja narzędzia tylko na serwerze).
 import { AiError, LIMITS, resolveKey, streamAssistant, type ChatMessage } from "@/lib/ai";
 import { isAllowedModel, platformAi, type Provider } from "@/lib/models";
 import { signedIn } from "@/lib/supabase/server";
-import { buildSystem } from "@/lib/assistant";
+import { buildSystem, buildToolSystem } from "@/lib/assistant";
+import { findTool } from "@/lib/tools";
 
 const plain = (msg: string, status: number) =>
   new Response(msg, { status, headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } });
@@ -11,6 +13,7 @@ type Body = {
   provider?: unknown;
   model?: unknown;
   stepId?: unknown;
+  tool?: unknown; // id szybkiej akcji z src/lib/tools.ts; gdy jest, stepId i mode są pomijane
   mode?: unknown; // "chat" | "document"
   messages?: unknown;
   context?: { stage?: unknown; documents?: unknown };
@@ -52,11 +55,17 @@ export async function POST(request: Request) {
   } catch {
     return plain("Nieprawidłowe zapytanie.", 400);
   }
+  if (!body || typeof body !== "object" || Array.isArray(body)) return plain("Nieprawidłowe zapytanie.", 400);
 
   const provider = body.provider;
   if (provider !== "openai" && provider !== "anthropic" && provider !== "openrouter") return plain("Najpierw podłącz swoje AI (ChatGPT albo Claude).", 400);
   const model = typeof body.model === "string" ? body.model : "";
   if (!isAllowedModel(provider as Provider, model)) return plain("Wybierz model z listy w ustawieniach AI.", 400);
+
+  // Szybka akcja: tylko znane id z tools.ts. Każda inna wartość pola `tool` (pusta, liczba, null, nieznane id) → 400.
+  // Sprawdzane przed kluczem i logowaniem: błędne zapytanie nie kosztuje nawet sprawdzenia sesji.
+  const tool = body.tool === undefined ? null : typeof body.tool === "string" ? (findTool(body.tool) ?? null) : null;
+  if (body.tool !== undefined && !tool) return plain("Nieznane narzędzie.", 400);
 
   const { key: apiKey, platform } = await resolveKey(provider);
   if (!apiKey) {
@@ -68,11 +77,12 @@ export async function POST(request: Request) {
   if (platform && !(await signedIn())) return plain("Zaloguj się, żeby rozmawiać z asystentem.", 401);
 
   const stepId = typeof body.stepId === "string" ? body.stepId : "";
-  const mode = body.mode === "document" ? "document" : "chat";
-  const system = buildSystem(stepId, mode, {
+  const mode = !tool && body.mode === "document" ? "document" : "chat";
+  const ctx = {
     stage: typeof body.context?.stage === "string" ? body.context.stage.slice(0, 200) : undefined,
     documents: parseDocuments(body.context?.documents),
-  });
+  };
+  const system = tool ? buildToolSystem(tool, ctx) : buildSystem(stepId, mode, ctx);
   if (!system) return plain("Nieznany krok ścieżki.", 400);
 
   const messages = parseMessages(body.messages);
@@ -90,7 +100,7 @@ export async function POST(request: Request) {
       staticSystem: system.staticText,
       dynamicSystem: system.dynamicText,
       messages,
-      cacheKey: `marketing-os-${stepId}-${mode}`,
+      cacheKey: tool ? `marketing-os-tool-${tool.id}` : `marketing-os-${stepId}-${mode}`,
     });
     return new Response(stream, { headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } });
   } catch (err) {

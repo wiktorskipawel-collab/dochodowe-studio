@@ -1,4 +1,5 @@
 import { Documents } from "@/components/Documents";
+import { WzoryDokumentow } from "@/components/WzoryDokumentow";
 import { PageHeader } from "@/components/ui";
 
 export const metadata = { title: "Dokumenty · Marketing OS" };
@@ -10,6 +11,7 @@ export default function Dokumenty() {
         Każdy krok kończy się dokumentem. Asystent korzysta z zatwierdzonych dokumentów w kolejnych krokach, więc nie musisz powtarzać tych samych informacji.
       </PageHeader>
       <Documents />
+      <WzoryDokumentow />
     </div>
   );
 }

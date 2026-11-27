@@ -7,7 +7,8 @@ import { phaseProgress } from "@/lib/gamification";
 
 // Kamienie milowe = zamknięte etapy ścieżki. Nagroda: 30 minut rozmowy z Bartkiem na żywo (pomysł z rozmowy 2026-11-27).
 // DO ZATWIERDZENIA (Bartek): które etapy dają rozmowę, ile rozmów, link do kalendarza (NEXT_PUBLIC_BARTEK_KALENDARZ).
-export const CALL_AFTER = new Set(["Fundament (moduł 00)", "Strategia (moduł 02)", "Wdrożenie"]);
+// Nazwy etapów ze ścieżki v2 (pole `phase` w journey.ts): rozmowa po fundamencie, po obsłudze zgłoszeń i po wdrożeniu.
+export const CALL_AFTER = new Set(["Fundament", "Cel i sprzedaż", "Wdrożenie"]);
 export const CALENDAR = process.env.NEXT_PUBLIC_BARTEK_KALENDARZ ?? "";
 
 const short = (phase: string) => phase.replace(/\s*\(.*\)$/, "");

@@ -30,11 +30,18 @@ export type Reward = {
   unlocked?: { id: string; no: string; title: string }; // odblokowany kolejny krok
 };
 
+/** Lokal z kalkulatora /lokal. Pola formularza jako tekst (tak jak w arkuszu); liczby liczy strona przy wyświetlaniu. */
+export type Lokal = { id: string; dane: Record<string, string>; dodano: string };
+/** Jeden warunek z zakładki „Warunki umowy najmu” (/lokal). */
+export type NajemWpis = { wlasciciel?: string; nasz?: string; uzgodnione?: string; komentarz?: string };
+
 export type JourneyState = {
   version: 1;
   demo?: boolean; // dane przykładowe z przycisku „Zobacz demo”
   preview?: boolean; // TRYB POKAZU (?pokaz=1): wszystkie kroki odblokowane na tym koncie. Przed startem usunąć albo ograniczyć.
   onboarded?: string; // kiedy ktoś zamknął powitanie z wideo / przewodnik po pulpicie (brak = pokaż przy wejściu)
+  lokale?: Lokal[]; // kalkulator lokalu (/lokal): porównywane lokale
+  najem?: Record<string, Record<string, NajemWpis>>; // warunki umowy najmu: id lokalu → id warunku → wpis
   profile: { name: string; email: string } | null; // PROTOTYP: konto w tej przeglądarce, docelowo Supabase Auth
   ai: { mode: ConnectionMode | null; model: string };
   survey: Record<string, string> | null;
@@ -90,6 +97,8 @@ type Ctx = {
   markWatched: (lessonIds: string[]) => void;
   setPreview: (on: boolean) => void;
   setOnboarded: () => void;
+  setLokale: (update: (cur: Lokal[]) => Lokal[]) => void; // bez XP
+  setNajem: (update: (cur: Record<string, Record<string, NajemWpis>>) => Record<string, Record<string, NajemWpis>>) => void; // bez XP
   reset: () => void;
   loadDemo: () => void;
   signIn: (profile: { name: string; email: string }) => void;
@@ -268,6 +277,8 @@ export function JourneyProvider({ children }: { children: ReactNode }) {
       },
       setPreview: (on) => setState((cur) => ({ ...cur, preview: on })),
       setOnboarded: () => setState((cur) => (cur.onboarded ? cur : { ...cur, onboarded: new Date().toISOString() })),
+      setLokale: (update) => setState((cur) => ({ ...cur, lokale: update(cur.lokale ?? []) })),
+      setNajem: (update) => setState((cur) => ({ ...cur, najem: update(cur.najem ?? {}) })),
       reset: () => setState(EMPTY),
       loadDemo: () => {
         const demo = demoState();

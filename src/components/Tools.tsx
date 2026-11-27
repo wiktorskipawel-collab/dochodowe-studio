@@ -1,64 +1,102 @@
 "use client";
 
 import Link from "next/link";
-import { UserPlus, Clapperboard, Film, MousePointerClick, ArrowRight, type LucideIcon } from "lucide-react";
+import { motion, useReducedMotion } from "motion/react";
+import { ArrowRight, Check, MessageCircle } from "lucide-react";
 import { useJourney } from "@/lib/store";
+import { STEPS } from "@/lib/journey";
+import type { ToolGroup } from "@/lib/tools";
 import { Pill } from "@/components/ui";
+import { toolIcon } from "@/components/ToolIcon";
 
-// Szybkie akcje z rozmowy z Bartkiem (2026-11-27). Każda to osobna rozmowa z asystentem na gotowym prompcie Bartka.
-// DO ZATWIERDZENIA: prompty, kolejność i to, które akcje są dostępne od początku, a które po kamieniu milowym.
-type Tool = { id: string; title: string; desc: string; uses: string[]; icon: LucideIcon; now?: { label: string; href: string } };
+// Szybkie akcje: każda karta prowadzi do osobnej rozmowy z asystentem AI (/narzedzia/<id>) na promptach Bartka.
+// Kotwice kart (#nowy-awatar, #vsl, #rolki, #ctr…) zostają, bo linkuje do nich menu boczne.
+// DO ZATWIERDZENIA: czy wszystkie akcje są dostępne od początku, czy część dopiero po kamieniu milowym.
 
-const TOOLS: Tool[] = [
-  {
-    id: "nowy-awatar", title: "Nowy awatar", icon: UserPlus,
-    desc: "Drugi typ klienta, np. osoby po ciąży albo seniorzy. Bartek przeprowadzi Cię przez te same pytania co w kroku 4.",
-    uses: ["dna", "awatar"], now: { label: "Na razie: krok 4, Awatar klienta", href: "/krok/awatar" },
-  },
-  {
-    id: "vsl", title: "Scenariusz VSL", icon: Clapperboard,
-    desc: "Scenariusz krótkiego filmu sprzedażowego pod Twoją ofertę: hak, problem, rozwiązanie, dowód, wezwanie do działania.",
-    uses: ["awatar", "oferta"],
-  },
-  {
-    id: "rolki", title: "Nowe rolki", icon: Film,
-    desc: "Pomysły i scenariusze rolek na najbliższe tygodnie, w języku Twojego klienta.",
-    uses: ["dna", "awatar"],
-  },
-  {
-    id: "ctr", title: "Analiza CTR reklam", icon: MousePointerClick,
-    desc: "Wklejasz wyniki z Menedżera reklam (plik CSV albo zrzut ekranu). Bartek mówi, które reklamy zostawić, które wyłączyć i co poprawić.",
-    uses: ["strategia"],
-  },
-];
+/** Dokumenty, z których korzysta narzędzie — tylko te, które istnieją w ścieżce (journey.ts). */
+export function toolDocDefs(uses: string[]) {
+  return uses.flatMap((id) => {
+    const step = STEPS.find((s) => s.docId === id);
+    return step ? [{ id, title: step.docTitle, stepId: step.id, stepNo: step.no }] : [];
+  });
+}
 
-const DOC_NAME: Record<string, string> = { dna: "DNA studia", awatar: "awatar", oferta: "oferta", strategia: "strategia" };
+export const toolChatKey = (id: string) => `tool:${id}`;
 
-export function Tools() {
-  const { state } = useJourney();
+export function Tools({ groups }: { groups: ToolGroup[] }) {
+  const { ready, state } = useJourney();
+  const reduce = useReducedMotion();
+  // numer karty na całej stronie: karty pojawiają się po kolei
+  const order = new Map(groups.flatMap((g) => g.tools).map((t, i) => [t.id, i]));
+
   return (
-    <ul className="grid gap-4 lg:grid-cols-2">
-      {TOOLS.map((t) => {
-        const missing = t.uses.filter((d) => state.docs[d]?.status !== "approved");
+    <div className="flex flex-col gap-8">
+      {groups.map((g) => {
+        const GroupIcon = toolIcon(g.icon);
         return (
-          <li key={t.id} id={t.id} className="glass-card flex scroll-mt-24 flex-col gap-3 rounded-2xl p-5">
-            <div className="flex items-start justify-between gap-3">
-              <h2 className="flex items-center gap-2 text-lg font-semibold"><t.icon className="size-5 text-brand" aria-hidden="true" />{t.title}</h2>
-              <Pill>Wkrótce</Pill>
+          <section key={g.id} aria-labelledby={`kat-${g.id}`} className="flex flex-col gap-3">
+            <div>
+              <h2 id={`kat-${g.id}`} className="flex items-center gap-2 text-lg font-semibold">
+                <GroupIcon className="size-5 text-brand" aria-hidden="true" />{g.title}
+              </h2>
+              <p className="text-sm text-white/65">{g.desc}</p>
             </div>
-            <p className="text-sm text-white/80">{t.desc}</p>
-            <p className="text-xs text-white/60">
-              Korzysta z: {t.uses.map((d) => DOC_NAME[d]).join(", ")}.
-              {missing.length ? ` Najpierw zatwierdź: ${missing.map((d) => DOC_NAME[d]).join(", ")}.` : " Masz wszystko, czego potrzeba."}
-            </p>
-            {t.now ? (
-              <Link href={t.now.href} className="inline-flex min-h-11 w-fit items-center gap-2 rounded-xl border border-white/20 px-4 text-sm font-semibold hover:bg-white/10">
-                {t.now.label}<ArrowRight className="size-4" aria-hidden="true" />
-              </Link>
-            ) : null}
-          </li>
+            <ul className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
+              {g.tools.map((t) => {
+                const Icon = toolIcon(t.icon);
+                const docs = toolDocDefs(t.uses);
+                const talking = ready && (state.chats[toolChatKey(t.id)]?.length ?? 0) > 0;
+                const i = order.get(t.id) ?? 0;
+                return (
+                  <motion.li
+                    key={t.id}
+                    id={t.id}
+                    className="scroll-mt-24"
+                    initial={reduce ? false : { opacity: 0, y: 14 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: Math.min(i * 0.04, 0.5), type: "spring", stiffness: 260, damping: 28 }}
+                  >
+                    <motion.div className="h-full" whileHover={reduce ? undefined : { y: -5 }} whileTap={{ scale: 0.98 }} transition={{ type: "spring", stiffness: 400, damping: 28 }}>
+                      <Link
+                        href={`/narzedzia/${t.id}`}
+                        className="glass-card group flex h-full flex-col gap-3 rounded-3xl p-5 outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                      >
+                        <span className="flex items-start justify-between gap-3">
+                          <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-brand/15 text-brand ring-1 ring-brand/25">
+                            <Icon className="size-6" aria-hidden="true" />
+                          </span>
+                          {talking ? <Pill tone="accent"><MessageCircle className="size-3.5" aria-hidden="true" />Rozmowa w toku</Pill> : <Pill>Asystent AI</Pill>}
+                        </span>
+                        <span className="text-lg font-semibold leading-snug">{t.title}</span>
+                        <span className="flex-1 text-sm text-white/75">{t.desc}</span>
+                        {docs.length ? (
+                          <span className="flex flex-wrap items-center gap-1.5 text-xs text-white/60">
+                            Korzysta z:
+                            {docs.map((d) => {
+                              const ok = ready && state.docs[d.id]?.status === "approved";
+                              return (
+                                <span key={d.id} className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 ${ok ? "bg-emerald-400/15 text-emerald-200" : "bg-white/10 text-white/70"}`}>
+                                  {ok ? <Check className="size-3" aria-hidden="true" /> : null}
+                                  {d.title}
+                                  <span className="sr-only">{ok ? " (zatwierdzony)" : " (jeszcze niezatwierdzony)"}</span>
+                                </span>
+                              );
+                            })}
+                          </span>
+                        ) : null}
+                        <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand">
+                          {talking ? "Wróć do rozmowy" : "Zacznij"}
+                          <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" aria-hidden="true" />
+                        </span>
+                      </Link>
+                    </motion.div>
+                  </motion.li>
+                );
+              })}
+            </ul>
+          </section>
         );
       })}
-    </ul>
+    </div>
   );
 }

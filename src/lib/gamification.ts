@@ -13,16 +13,17 @@ export const XP: Record<JourneyEvent["type"], number> = {
   msg: 2, // wiadomość do asystenta
 };
 
+// Nazwy poziomów bez rodzaju i zgodne ze ścieżką v2 (cały program, nie tylko marketing). DO ZATWIERDZENIA: nazwy i progi (Bartek).
 export const LEVELS = [
   { min: 0, name: "Start" },
-  { min: 80, name: "Odkrywca" },
+  { min: 80, name: "Pierwsze kroki" },
   { min: 200, name: "Fundament" },
-  { min: 350, name: "Znawca klienta" },
-  { min: 550, name: "Twórca oferty" },
-  { min: 800, name: "Strateg" },
-  { min: 1050, name: "Wdrożeniowiec" },
-  { min: 1350, name: "Analityk" },
-  { min: 1700, name: "Mistrz marketingu" },
+  { min: 350, name: "Klient w centrum" },
+  { min: 550, name: "Oferta 90 dni" },
+  { min: 800, name: "Sprzedaż w procesie" },
+  { min: 1050, name: "Lejek w ruchu" },
+  { min: 1350, name: "Liczby pod kontrolą" },
+  { min: 1700, name: "Studio na plusie" },
   { min: 2000, name: "Dochodowe Studio" },
 ];
 
@@ -149,11 +150,14 @@ export function badges(state: JourneyState): Badge[] {
   add("start", "Start", "Ankieta za Tobą", "flag", !!state.survey);
   add("dna", "DNA studia", "Zatwierdzone DNA studia", "dna", approved("dna"));
   add("klient", "Klient jak na dłoni", "Zatwierdzony awatar klienta", "user", approved("awatar"));
-  add("oferta", "Oferta, która sprzedaje", "Zatwierdzona oferta", "gem", approved("oferta"));
+  add("oferta", "Oferta, która sprzedaje", "Zatwierdzona oferta 90 dni", "gem", approved("oferta"));
+  // Ikony „phone” i „heart”: do dodania w BadgeIcon.tsx (PhoneCall, HeartHandshake); do tego czasu BadgeIcon pokaże pucharek.
+  add("sprzedaz", "Żaden lead nie czeka", "Zatwierdzony system obsługi zgłoszeń", "phone", approved("sprzedaz"));
   add("plan-gry", "Plan gry", "Zatwierdzona strategia", "target", approved("strategia"));
   add("zielone-swiatlo", "Zielone światło", "Lejek ma fundamenty", "rocket", approved("gotowosc"));
-  add("tresci", "Treści gotowe", "Materiały lejka zatwierdzone", "pen", approved("materialy-lejka"));
-  add("liczby", "Liczby mówią", "Pierwszy przegląd wyników", "chart", approved("wyniki"));
+  add("tresci", "Treści gotowe", "Gotowce lejka zatwierdzone", "pen", approved("materialy-lejka"));
+  add("liczby", "Liczby mówią", "Pierwszy przegląd tygodniowy", "chart", approved("wyniki"));
+  add("utrzymanie", "Klienci zostają", "Zatwierdzony system utrzymania klientów", "heart", approved("utrzymanie"));
   add("rozmowa", "Rozmowa w toku", "20 wiadomości z asystentem", "chat", msgs >= 20);
   add("wiedza", "Wiedza w praktyce", "5 zaliczonych lekcji", "book", lessons >= 5);
   add("seria3", "3 dni w ruchu", "3 dni z rzędu w akcji", "flame", streak >= 3);

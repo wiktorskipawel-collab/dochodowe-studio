@@ -5,14 +5,15 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { X, Sparkles } from "lucide-react";
+import { X, Sparkles, type LucideIcon } from "lucide-react";
 import { useJourney } from "@/lib/store";
 import { STEPS } from "@/lib/journey";
 
 export const ASSISTANT_PHOTO: string | null = "/bartek.png"; // TESTOWO — zdjęcie od Pawła; przed startem: zgoda Bartka i lepsze zdjęcie portretowe
 export const ASSISTANT_NAME = "Bartłomiej Sikorski";
 
-export function AssistantAvatar({ size = 56, talking = false }: { size?: number; talking?: boolean }) {
+/** icon (opcjonalnie): ikona narzędzia zamiast zdjęcia Bartka — szybkie akcje w /narzedzia. Plakietka „AI” zostaje zawsze. */
+export function AssistantAvatar({ size = 56, talking = false, icon: Icon }: { size?: number; talking?: boolean; icon?: LucideIcon }) {
   const reduce = useReducedMotion();
   return (
     <span className="relative inline-grid shrink-0 place-items-center" style={{ width: size, height: size }}>
@@ -28,7 +29,9 @@ export function AssistantAvatar({ size = 56, talking = false }: { size?: number;
         className="relative grid size-full place-items-center overflow-hidden rounded-full font-bold text-white"
         style={{ background: "linear-gradient(145deg, #3c9e22, #14561a)", boxShadow: "0 0 0 2px #72c41c, 0 8px 24px -8px rgba(0,0,0,.6)", fontSize: size * 0.34 }}
       >
-        {ASSISTANT_PHOTO ? (
+        {Icon ? (
+          <Icon aria-hidden="true" style={{ width: size * 0.48, height: size * 0.48 }} />
+        ) : ASSISTANT_PHOTO ? (
           // eslint-disable-next-line @next/next/no-img-element -- zwykłe zdjęcie z /public
           <img src={ASSISTANT_PHOTO} alt="" className="size-full object-cover" />
         ) : (

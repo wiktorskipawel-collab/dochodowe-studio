@@ -26,7 +26,7 @@ const SLIDES: Slide[] = [
   {
     top: "Oszczędzasz",
     bottom: "czas",
-    caption: "Zamiast miesięcy prób: 12 kroków, a każdy kończy się gotowym dokumentem.",
+    caption: "Zamiast miesięcy prób: 14 kroków, a każdy kończy się gotowym dokumentem.",
     // klepsydra: dwie przekątne krzyżują się w talii
     pts: [[340, 20], [60, 20], [128, 75], [196, 130], [128, 185], [94, 212], [60, 240], [340, 240], [272, 185], [204, 130], [272, 75], [306, 47]],
     dots: [0, 1, 3, 6, 7, 9],

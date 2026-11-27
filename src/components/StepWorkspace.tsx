@@ -178,34 +178,70 @@ function BartekLine({ text, talking }: { text: string; talking?: boolean }) {
   );
 }
 
-/** Lekcje kroku przed rozmową. Wideo pojawi się po przeniesieniu kursu do odtwarzacza (pole video w lekcji). */
+/** Lekcje kroku przed rozmową: jeden odtwarzacz naraz (iframe tylko dla wybranej lekcji), lista lekcji i link „Otwórz na Skool”. */
 function LessonGate({ lessons, watched, onDone }: { lessons: Lesson[]; watched: Record<string, boolean>; onDone: () => void }) {
+  const [active, setActive] = useState(() => Math.max(0, lessons.findIndex((l) => !watched[l.id])));
+  const l = lessons[active] ?? lessons[0];
+  if (!l) return null;
   return (
     <section className="glass-card flex flex-col gap-4 rounded-2xl p-5" aria-labelledby="lekcja-h">
       <h2 id="lekcja-h" className="flex items-center gap-2 font-semibold">
-        <PlayCircle className="size-5 text-brand" aria-hidden="true" />{lessons.length === 1 ? "Lekcja do tego kroku" : "Lekcje do tego kroku"}
+        <PlayCircle className="size-5 text-brand" aria-hidden="true" />{lessons.length === 1 ? "Lekcja do tego kroku" : `Lekcje do tego kroku (${lessons.length})`}
       </h2>
-      {lessons.map((l) => (
-        <div key={l.id} className="flex flex-col gap-2">
-          {l.video ? (
-            <iframe src={l.video} title={l.title} allow="encrypted-media; picture-in-picture; fullscreen" loading="lazy" className="aspect-video w-full rounded-xl border border-white/10 bg-black" />
-          ) : (
-            <div className="grid aspect-video w-full place-items-center rounded-xl border border-dashed border-white/20 bg-black/30 p-4 text-center">
-              <span className="flex flex-col items-center gap-2 text-sm text-white/65">
-                <PlayCircle className="size-10 text-white/40" aria-hidden="true" />
-                Tu pojawi się wideo, gdy przeniesiemy kurs do odtwarzacza platformy.
-              </span>
-            </div>
-          )}
-          <p className="text-sm">
-            <strong className="font-semibold">{l.title}</strong> <span className="text-white/60">· {l.source}</span>
-            {watched[l.id] ? <span className="ml-2 text-emerald-300">zaliczona</span> : null}
-          </p>
+      {l.video ? (
+        <iframe key={l.id} src={l.video} title={l.title} allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen loading="lazy" className="aspect-video w-full rounded-xl border border-white/10 bg-black" />
+      ) : (
+        <div className="grid aspect-video w-full place-items-center rounded-xl border border-dashed border-white/20 bg-black/30 p-4 text-center">
+          <span className="flex flex-col items-center gap-3 text-sm text-white/70">
+            <ExternalLink className="size-9 text-white/40" aria-hidden="true" />
+            {l.skool ? "Ta lekcja nie ma nagrania. Treść i materiały są na Skool." : "Tu pojawi się wideo, gdy przeniesiemy kurs do odtwarzacza platformy."}
+            {l.skool ? (
+              <a href={l.skool} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-white px-4 font-semibold text-neutral-950 hover:bg-white/90">
+                Otwórz na Skool<ExternalLink className="size-4" aria-hidden="true" /><span className="sr-only"> (w nowej karcie)</span>
+              </a>
+            ) : null}
+          </span>
         </div>
-      ))}
-      <button type="button" onClick={onDone} className="inline-flex min-h-12 w-fit items-center gap-2 rounded-xl bg-brand px-5 font-bold text-brand-ink hover:brightness-105">
-        <Check className="size-4" aria-hidden="true" />Obejrzane, lecimy do pytań
-      </button>
+      )}
+      <div className="flex flex-col gap-1">
+        <p className="text-sm">
+          <strong className="font-semibold">{l.title}</strong> <span className="text-white/60">· {l.source}</span>
+          {watched[l.id] ? <span className="ml-2 text-emerald-300">zaliczona</span> : null}
+        </p>
+        {l.opis ? <p className="text-sm text-white/70">{l.opis}</p> : null}
+        {l.attachments?.length ? <p className="text-xs text-white/55">Materiały na Skool: {l.attachments.join(", ")}</p> : null}
+        {l.skool && l.video ? (
+          <a href={l.skool} target="_blank" rel="noopener noreferrer" className="inline-flex w-fit items-center gap-1.5 text-xs font-semibold text-white/60 hover:text-white">
+            Otwórz na Skool<ExternalLink className="size-3.5" aria-hidden="true" /><span className="sr-only"> (w nowej karcie)</span>
+          </a>
+        ) : null}
+      </div>
+      {lessons.length > 1 ? (
+        <ol className="flex flex-col gap-1.5" aria-label="Lekcje w tym kroku">
+          {lessons.map((x, i) => (
+            <li key={x.id}>
+              <button type="button" onClick={() => setActive(i)} aria-current={i === active ? "true" : undefined}
+                className={`flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm ${i === active ? "bg-brand/15 text-white" : "text-white/75 hover:bg-white/[0.06] hover:text-white"}`}>
+                <span className={`grid size-6 shrink-0 place-items-center rounded-full text-xs font-bold ${watched[x.id] ? "bg-emerald-400/25 text-emerald-200" : i === active ? "bg-brand text-brand-ink" : "bg-white/10"}`}>
+                  {watched[x.id] ? <Check className="size-3.5" aria-hidden="true" /> : i + 1}
+                </span>
+                <span className="min-w-0 flex-1 truncate font-medium">{x.title}</span>
+                <span className="shrink-0 text-xs text-white/50">{x.video ? "wideo" : "Skool"}</span>
+              </button>
+            </li>
+          ))}
+        </ol>
+      ) : null}
+      <div className="flex flex-wrap items-center gap-2">
+        {active < lessons.length - 1 ? (
+          <button type="button" onClick={() => setActive(active + 1)} className="inline-flex min-h-12 items-center gap-2 rounded-xl border border-white/20 px-4 font-semibold hover:bg-white/10">
+            Następna lekcja<ArrowRight className="size-4" aria-hidden="true" />
+          </button>
+        ) : null}
+        <button type="button" onClick={onDone} className="inline-flex min-h-12 w-fit items-center gap-2 rounded-xl bg-brand px-5 font-bold text-brand-ink hover:brightness-105">
+          <Check className="size-4" aria-hidden="true" />{lessons.length === 1 ? "Obejrzane" : "Obejrzane wszystkie"}, lecimy do pytań
+        </button>
+      </div>
     </section>
   );
 }

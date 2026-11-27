@@ -274,6 +274,7 @@ body::before {
   --phase-3: #4fb52a;
   --phase-4: #79cf3e;
   --phase-5: #a9e47a;
+  --phase-6: #d2f3b1;
 }
 
 @layer base {

@@ -35,7 +35,8 @@ const TOUR: TourStep[] = [
   { target: "milestones", title: "Kamienie milowe", body: "Zamknij etap, a odblokujesz 30 minut rozmowy z Bartkiem na żywo." },
   { target: "nav-path", title: "Mapa całej ścieżki", body: "„Twoja ścieżka” pokazuje wszystkie etapy i kroki na jednej mapie. Lekcje masz zebrane w jednym miejscu.", side: "right" },
   { target: "nav-marketing", title: "Mój marketing", body: "Tu lądują zatwierdzone dokumenty: DNA studia, awatar, oferta i strategia. Każdy pobierzesz jednym kliknięciem.", side: "right" },
-  { target: "nav-actions", title: "Szybkie akcje", body: "Kiedy podstawy są gotowe: nowy awatar, scenariusz VSL, rolki i analiza reklam.", side: "right" },
+  { target: "nav-actions", title: "Narzędzia AI", body: "Asystent sprzedaży podpowie, co odpisać leadowi. Do tego analiza reklam, rolki, VSL i narzędzia dla zespołu.", side: "right" },
+  { target: "nav-studio", title: "Studio", body: "Kalkulator lokalu, wszystkie kursy Bartka, biblioteka dla trenerów i wzory umów dla studia.", side: "right" },
   { title: "To wszystko. Zaczynamy?", body: "" },
 ];
 

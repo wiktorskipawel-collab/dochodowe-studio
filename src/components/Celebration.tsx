@@ -6,6 +6,9 @@
 //   z konfetti i fanfarą, a na końcu przycisk do odblokowanego kroku.
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import gsap from "gsap";
+import { ScrambleTextPlugin } from "gsap/ScrambleTextPlugin";
+import { useGSAP } from "@gsap/react";
 import confetti from "canvas-confetti";
 import { AnimatePresence, animate, motion, useReducedMotion } from "motion/react";
 import { ArrowRight, Check, Lock, LockOpen, Sparkles, Trophy, Video, Zap, CalendarCheck } from "lucide-react";
@@ -15,6 +18,9 @@ import { AssistantAvatar } from "@/components/Assistant";
 import { BadgeIcon } from "@/components/BadgeIcon";
 import { CALL_AFTER, CALENDAR } from "@/components/Milestones";
 import type { Badge } from "@/lib/gamification";
+import { flyXp } from "@/lib/fx";
+
+gsap.registerPlugin(ScrambleTextPlugin, useGSAP);
 
 const COLORS = ["#72c41c", "#ffffff", "#dd9933", "#1a7f2a", "#b5e86b"];
 const short = (phase: string) => phase.replace(/\s*\(.*\)$/, "");
@@ -57,11 +63,16 @@ function CountUp({ to, delay = 0 }: { to: number; delay?: number }) {
 }
 
 function Toast({ reward, onDone }: { reward: Reward | null; onDone: () => void }) {
+  const icon = useRef<HTMLSpanElement>(null);
   useEffect(() => {
     if (!reward) return;
     play("xp");
+    const fly = setTimeout(() => flyXp(icon.current), 180); // XP leci do licznika w nagłówku
     const t = setTimeout(onDone, 3000);
-    return () => clearTimeout(t);
+    return () => {
+      clearTimeout(fly);
+      clearTimeout(t);
+    };
   }, [reward, onDone]);
 
   return (
@@ -72,7 +83,7 @@ function Toast({ reward, onDone }: { reward: Reward | null; onDone: () => void }
             initial={{ opacity: 0, y: -40, scale: 0.8 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -24, scale: 0.92 }}
             transition={{ type: "spring", stiffness: 420, damping: 22 }}
             className="pointer-events-auto flex items-center gap-4 rounded-2xl border border-orange/40 bg-[#0d1a0c] px-5 py-3.5 shadow-[0_20px_50px_-20px_rgba(221,153,51,.6)]">
-            <motion.span initial={{ rotate: -25, scale: 0.4 }} animate={{ rotate: 0, scale: 1 }} transition={{ type: "spring", stiffness: 500, damping: 12, delay: 0.1 }}
+            <motion.span ref={icon} initial={{ rotate: -25, scale: 0.4 }} animate={{ rotate: 0, scale: 1 }} transition={{ type: "spring", stiffness: 500, damping: 12, delay: 0.1 }}
               className="grid size-11 place-items-center rounded-xl bg-orange text-neutral-950">
               <Zap className="size-6" aria-hidden="true" />
             </motion.span>
@@ -171,7 +182,7 @@ function Fanfare({ reward, screens, onDone }: { reward: Reward; screens: Screen[
               <>
                 <Burst tone="orange"><span className="text-6xl font-black">{s.index}</span></Burst>
                 <p className="mt-6 text-xs font-bold uppercase tracking-[0.2em] text-orange">Nowy poziom</p>
-                <h2 className="mt-1 text-4xl font-black">{s.name}</h2>
+                <LevelName key={s.name} name={s.name} />
                 <p className="mt-2 flex items-center gap-1.5 text-white/75"><Sparkles className="size-4 text-orange" aria-hidden="true" />Tak się buduje dochodowe studio.</p>
               </>
             )}
@@ -258,4 +269,16 @@ function UnlockIcon({ tone = "brand" }: { tone?: "brand" | "orange" }) {
       {open ? <LockOpen className="size-6" aria-hidden="true" /> : tone === "orange" ? <Video className="size-6" aria-hidden="true" /> : <Lock className="size-6" aria-hidden="true" />}
     </motion.span>
   );
+}
+
+/** Nazwa nowego poziomu „rozsypuje się” i składa (GSAP ScrambleText). */
+function LevelName({ name }: { name: string }) {
+  const ref = useRef<HTMLHeadingElement>(null);
+  useGSAP(() => {
+    const el = ref.current;
+    if (!el || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    el.textContent = "";
+    gsap.to(el, { duration: 1.3, delay: 0.35, scrambleText: { text: name, chars: "ABCDEFGHIJKLMNOPRSTUWZ0123456789", revealDelay: 0.35, speed: 0.5 } });
+  });
+  return <h2 ref={ref} className="mt-1 min-h-[1.2em] text-4xl font-black" aria-label={name}>{name}</h2>;
 }

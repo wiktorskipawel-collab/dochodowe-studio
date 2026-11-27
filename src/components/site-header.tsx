@@ -6,6 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
 import { useJourney } from "@/lib/store";
+import { XpCount } from "@/components/XpCount";
 import { STEPS } from "@/lib/journey";
 import { levelOf, streakDays, xpTotal } from "@/lib/gamification";
 
@@ -21,7 +22,7 @@ function titleFor(path: string) {
 
 export function SiteHeader() {
   const path = usePathname();
-  const { state, cloud } = useJourney();
+  const { ready, state, cloud } = useJourney();
   const xp = xpTotal(state.events);
   const level = levelOf(xp);
   const streak = streakDays(state.events);
@@ -40,7 +41,7 @@ export function SiteHeader() {
             </span>
           ) : null}
           <Badge variant="outline" className="hidden gap-1 border-amber-300/40 text-amber-200 sm:inline-flex"><FlameIcon />{streak} {streak === 1 ? "dzień" : "dni"}</Badge>
-          <Badge className="gap-1"><ZapIcon />{xp} XP · {level.name}</Badge>
+          <Badge data-xp-target className="gap-1"><ZapIcon /><XpCount value={xp} live={ready} /> XP · {level.name}</Badge>
         </div>
       </div>
     </header>

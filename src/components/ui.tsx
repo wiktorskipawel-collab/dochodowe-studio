@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { SplitTitle } from "@/components/SplitTitle";
 import { motion } from "motion/react";
 import { Users, Coins, ShoppingBag, Target, type LucideIcon } from "lucide-react";
 
@@ -62,7 +63,7 @@ export function PageHeader({ eyebrow, title, children }: { eyebrow: string; titl
   return (
     <header className="flex flex-col gap-1.5 pb-2">
       <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand">{eyebrow}</p>
-      <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">{title}</h1>
+      <SplitTitle text={title} className="text-2xl font-semibold tracking-tight md:text-3xl" />
       {children ? <div className="max-w-3xl text-white/75">{children}</div> : null}
     </header>
   );
@@ -71,7 +72,7 @@ export function PageHeader({ eyebrow, title, children }: { eyebrow: string; titl
 export function AiNote() {
   return (
     <p className="text-xs text-white/65">
-      Odpowiedzi tworzy sztuczna inteligencja (OpenAI) na podstawie metodyki Dochodowego Studia. Ważne decyzje zawsze zatwierdzasz Ty.
+      Odpowiedzi tworzy sztuczna inteligencja na podstawie metodyki Dochodowego Studia. Ważne decyzje zawsze zatwierdzasz Ty.
     </p>
   );
 }

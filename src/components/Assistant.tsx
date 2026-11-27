@@ -67,7 +67,7 @@ function messageFor(path: string): string | null {
   if (path.startsWith("/polacz")) return "Połącz swój ChatGPT jednym kliknięciem. Potem wracamy do pracy nad krokiem.";
   if (path.startsWith("/ankieta")) return "Odpowiadaj szczerze. Na tej podstawie dobiorę Twoją ścieżkę. Nie ma złych odpowiedzi.";
   if (path.startsWith("/sciezka")) return "Każdy zatwierdzony dokument to cegła w Twoim marketingu. Idziemy po kolei, bez skakania.";
-  if (path.startsWith("/dokumenty")) return "Tu masz wszystko, co już zbudowałeś. Wracaj tu, kiedy potrzebujesz konkretów.";
+  if (path.startsWith("/dokumenty")) return "Tu masz wszystko, co już powstało na ścieżce. Wracaj tu, kiedy potrzebujesz konkretów.";
   if (path.startsWith("/lekcje")) return "Lekcja pomaga zrozumieć, ale liczy się wdrożenie. Obejrzyj i od razu działaj.";
   const step = STEPS.find((s) => path === `/krok/${s.id}`);
   if (step) return `Pracujemy nad krokiem „${step.title}”. ${step.goal}`;

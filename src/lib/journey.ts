@@ -250,7 +250,7 @@ Pytania bez odpowiedzi:`,
 - Korzystaj z inwentaryzacji i diagnozy. ${STATUSES}
 - Najpierw pokaż DNA do zatwierdzenia. Popraw to, co właściciel wskaże.
 - DNA to żywy dokument: później będzie aktualizowane wraz z wiedzą o klientach.`,
-    opener: "Składam teraz DNA Twojego studia z tego, co ustaliliśmy. Zanim je przygotuję: czy jest coś ważnego o studiu, czego jeszcze nie powiedziałeś?",
+    opener: "Składam teraz DNA Twojego studia z tego, co ustaliliśmy. Zanim je przygotuję: czy jest coś ważnego o studiu, czego jeszcze nie ma w naszej rozmowie?",
     exitCriteria: ["DNA ma wszystkie 10 obszarów", "Każda ważna informacja ma status", "Zatwierdzasz DNA jako prawdziwy obraz studia"],
     lessons: [L.playbook],
     needs: ["inwentaryzacja", "diagnoza"],
@@ -276,7 +276,7 @@ Skąd to wiemy (prawdziwi klienci, opinie, rozmowy) — statusy:`,
 - Rozróżniaj cele klientów od ich cech. Nie buduj awatara z researchu konkurencji ani wyłącznie z demografii.
 - Gdy studio ma dwie wyraźne grupy, opisz główną i zaznacz drugą.
 - Na końcu kontrola jakości: wypisz, co jest założeniem bez potwierdzenia.`,
-    opener: "Teraz klient. Pomyśl o 2–3 najlepszych klientach, jakich miałeś. Kim są, co ich do Ciebie przyprowadziło i jakimi słowami opisywali swój problem na pierwszym spotkaniu?",
+    opener: "Teraz klient. Pomyśl o 2–3 najlepszych klientach Twojego studia. Kim są, co ich do Ciebie przyprowadziło i jakimi słowami opisywali swój problem na pierwszym spotkaniu?",
     exitCriteria: ["Awatar opiera się na prawdziwych klientach", "Masz zwroty, którymi mówią klienci", "Wiesz, co jest pewne, a co do sprawdzenia"],
     lessons: [L.awatarPlaybook, L.profilKlienta],
     needs: ["dna"],
@@ -336,7 +336,7 @@ Scenariusze (ostrożny / realistyczny / optymistyczny) albo budżet testowy, je�
 - Przy „nie mam pieniędzy na reklamy” konfrontuj: „To skąd chcesz mieć klientów? Masz dwie waluty: czas i pieniądze.” Pokaż koszt obu i poproś o świadomy wybór.
 - Prognoza tylko na danych studia; bez danych zaproponuj budżet testowy zamiast prognozy. Podział budżetu zatwierdza właściciel.`,
     opener: "Ustalmy, po co nam marketing w liczbach. Ilu nowych klientów potrzebujesz i do kiedy?",
-    exitCriteria: ["Cel jest przeliczony na leady i rozmowy", "Znasz koszt swojej godziny", "Świadomie wybrałeś czas, pieniądze albo oba"],
+    exitCriteria: ["Cel jest przeliczony na leady i rozmowy", "Znasz koszt swojej godziny", "Wybór jest świadomy: czas, pieniądze albo oba"],
     lessons: [L.systemKlientow],
     needs: ["dna", "oferta"],
   },
@@ -364,7 +364,7 @@ Status: zatwierdzone przez właściciela (tak / nie):`,
 - Rekomenduj 1–2 lejki z uzasadnieniem. Meta nie jest domyślna dla każdego. Możesz powiedzieć: „Na Twoim etapie nie potrzebujesz jeszcze VSL-u. Najpierw dopracuj ofertę i obsługę leadów.”
 - Właściciel może świadomie wybrać inny lub więcej lejków — wtedy pokaż konsekwencje dla budżetu, czasu i zespołu.
 - Strategię zatwierdza właściciel; dopiero potem powstają materiały. Może ją najpierw pokazać zespołowi DS.`,
-    opener: "Mamy DNA, awatar, ofertę i budżet. Teraz ocenię 6 lejków Dochodowego Studia pod Twoje studio. Zanim zacznę: czy któryś lejek już testowałeś i jak poszło?",
+    opener: "Mamy DNA, awatar, ofertę i budżet. Teraz ocenię 6 lejków Dochodowego Studia pod Twoje studio. Zanim zacznę: czy któryś lejek był już testowany i jak poszło?",
     exitCriteria: ["Każdy z 6 lejków ma ocenę", "Wybrane są 1–2 lejki z uzasadnieniem", "Zatwierdzasz strategię"],
     lessons: [L.systemKlientow, L.systemSprzedazy],
     needs: ["dna", "oferta", "cel-budzet"],
@@ -432,7 +432,7 @@ Materiały (gotowe do użycia):
 - Jeden problem na reklamę, mocne hooki, krótkie wersje. Bez dowodów nie udajemy wyników. Reklamy sylwetkowe nie mogą zawstydzać ani sugerować negatywnych cech wyglądu (polityka Meta).
 - Przy zlecaniu przygotuj brief, materiały i kryteria odbioru. Nowe, niesprawdzone pomysły oznaczaj jako eksperymenty.`,
     opener: "Czas na materiały. Zanim cokolwiek napiszę, pokażę Ci 2–3 koncepcje komunikacji do wyboru. Od czego zaczynamy: reklamy, rolki czy przypięty post?",
-    exitCriteria: ["Wybrałeś koncepcję komunikacji", "Masz materiały gotowe do publikacji albo do zlecenia"],
+    exitCriteria: ["Koncepcja komunikacji jest wybrana", "Masz materiały gotowe do publikacji albo do zlecenia"],
     lessons: [L.content, L.scenariusze],
     needs: ["dna", "awatar", "oferta", "strategia"],
   },
@@ -457,7 +457,7 @@ Kolejne zadania:`,
 - Analizuj całą drogę: reklama → lead → kontakt → umówienie → obecność → sprzedaż, z CAC. Koszt leada to za mało — zawsze dopytaj, ile osób kupiło i za ile.
 - Najpierw sprawdź, czy danych jest dość (nie wyłączaj kampanii po 3 dniach). Potem jedna decyzja: optymalizujemy / przebudowujemy / zmieniamy lejek. Skalowanie według celu, rentowności i wolnych miejsc — nie dla samego skalowania.
 - Pamiętaj wcześniejsze testy i nie proponuj tego samego bez uwzględnienia historii.`,
-    opener: "Zobaczmy liczby. Napisz po prostu: ile wydałeś, ile przyszło zgłoszeń, do ilu osób się dodzwoniłeś i ile osób kupiło. Możesz też wkleić zrzut ekranu.",
+    opener: "Zobaczmy liczby. Napisz po prostu: ile poszło na reklamy, ile przyszło zgłoszeń, z iloma osobami udało się porozmawiać i ile osób kupiło. Możesz też wkleić zrzut ekranu.",
     exitCriteria: ["Znasz koszt pozyskania klienta", "Wiesz, gdzie tracisz klientów", "Jest jedna decyzja na kolejny okres"],
     lessons: [L.ocenaReklam, L.systemKlientow],
     needs: ["strategia", "plan"],

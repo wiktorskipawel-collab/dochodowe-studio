@@ -2,7 +2,7 @@
 
 // Pierwsze wejście na pulpit: okienko z wideo powitalnym Bartka, potem przewodnik po pulpicie
 // (podświetlony element + dymek „Dalej”), jak w aplikacjach typu Notion czy Linear (prośba Pawła 2026-11-27).
-// Przewodnik można włączyć ponownie z menu konta („Przewodnik po pulpicie”).
+// Całe powitanie można odtworzyć z menu konta („Powitanie i przewodnik”).
 import Link from "next/link";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -43,9 +43,10 @@ export function Onboarding() {
   const { ready, state, setOnboarded } = useJourney();
   const [tour, setTour] = useState(false);
   const [welcomeClosed, setWelcomeClosed] = useState(false);
-  const showWelcome = ready && !state.demo && !!state.profile && !state.onboarded && !welcomeClosed && !tour;
+  const [replay, setReplay] = useState(false); // ponownie z menu konta (też w demo, np. na pokaz)
+  const showWelcome = ready && !!state.profile && (replay || (!state.demo && !state.onboarded)) && !welcomeClosed && !tour;
 
-  // ponowne włączenie przewodnika (menu konta)
+  // ponowne włączenie: całe powitanie (intro → wideo → przewodnik) z menu konta
   useEffect(() => {
     if (!ready) return;
     const open = () => {
@@ -55,7 +56,9 @@ export function Onboarding() {
       } catch {
         // brak sessionStorage: otwieramy po samym zdarzeniu
       }
-      setTour(true);
+      setTour(false);
+      setWelcomeClosed(false);
+      setReplay(true);
     };
     const t = setTimeout(open, 400);
     window.addEventListener(TOUR_FLAG, open);
@@ -67,6 +70,7 @@ export function Onboarding() {
 
   const finish = useCallback(() => {
     setTour(false);
+    setReplay(false);
     setWelcomeClosed(true);
     setOnboarded();
   }, [setOnboarded]);

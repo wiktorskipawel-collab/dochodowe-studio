@@ -154,7 +154,7 @@ function NavUser() {
           </DropdownMenuTrigger>
           <DropdownMenuContent className="min-w-56" side={isMobile ? "bottom" : "right"} align="end" sideOffset={4}>
             <DropdownMenuLabel className="text-xs text-muted-foreground">Konto</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => { router.push("/"); startTour(); }}><CompassIcon />Przewodnik po pulpicie</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => { router.push("/"); startTour(); }}><CompassIcon />Powitanie i przewodnik</DropdownMenuItem>
             {platformAi ? null : <DropdownMenuItem onClick={() => router.push("/polacz")}><PlugZapIcon />Połączenie z AI</DropdownMenuItem>}
             {platformAi ? null : <DropdownMenuSeparator />}
             <DropdownMenuItem onClick={() => { signOut(); router.push("/logowanie"); }}><LogOutIcon />Wyloguj</DropdownMenuItem>

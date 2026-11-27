@@ -8,7 +8,7 @@ import { Trophy, Zap } from "lucide-react";
 import { useJourney } from "@/lib/store";
 import { AssistantAvatar } from "@/components/Assistant";
 
-const COLORS = ["#dd9933", "#f2c472", "#16a37b", "#007f5f", "#ffffff"];
+const COLORS = ["#72c41c", "#ffffff", "#dd9933", "#1a7f2a", "#b5e86b"];
 
 export function Celebration() {
   const { reward, clearReward } = useJourney();

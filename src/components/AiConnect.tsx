@@ -174,7 +174,7 @@ function ChatGptFirst() {
             <li key={t} className="flex gap-3 rounded-xl bg-black/20 p-3"><span className="grid size-7 shrink-0 place-items-center rounded-lg bg-brand text-sm font-extrabold text-brand-ink">{i + 1}</span>{t}</li>
           ))}
         </ol>
-        <button type="button" onClick={choose} className="inline-flex min-h-12 w-fit items-center gap-2 rounded-xl bg-brand px-6 text-lg font-bold text-brand-ink shadow-[0_10px_30px_-10px_rgba(221,153,51,.8)] hover:brightness-105">
+        <button type="button" onClick={choose} className="inline-flex min-h-12 w-fit items-center gap-2 rounded-xl bg-brand px-6 text-lg font-bold text-brand-ink shadow-[0_10px_30px_-10px_rgba(114,196,28,.5)] hover:brightness-105">
           <LogIn className="size-5" aria-hidden="true" />Połącz mój ChatGPT
         </button>
       </motion.div>

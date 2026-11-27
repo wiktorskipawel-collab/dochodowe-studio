@@ -1,7 +1,7 @@
 "use client";
 
 // Wykresy pulpitu uczestnika. Paleta sprawdzona walidatorem dataviz (tryb ciemny):
-// zrobione #16a37b · w trakcie #bd8222 · do zrobienia #4b8fdb · tło toru rgba(255,255,255,.09) · złota rampa aktywności.
+// zrobione #4fb52a · w trakcie #bd8222 · do zrobienia #4b8fdb · tło toru rgba(255,255,255,.09) · złota rampa aktywności.
 import type { ReactNode } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";

@@ -20,13 +20,13 @@ export function AssistantAvatar({ size = 56, talking = false }: { size?: number;
       <motion.span
         aria-hidden="true"
         className="absolute inset-0 rounded-full"
-        style={{ background: "radial-gradient(circle, rgba(221,153,51,.45), transparent 70%)" }}
+        style={{ background: "radial-gradient(circle, rgba(114,196,28,.4), transparent 70%)" }}
         animate={reduce ? undefined : { scale: talking ? [1, 1.25, 1] : [1, 1.12, 1], opacity: [0.6, 1, 0.6] }}
         transition={{ duration: talking ? 1.2 : 3.2, repeat: Infinity, ease: "easeInOut" }}
       />
       <span
         className="relative grid size-full place-items-center overflow-hidden rounded-full font-bold text-white"
-        style={{ background: "linear-gradient(145deg, #0a8f6b, #00543f)", boxShadow: "0 0 0 2px #dd9933, 0 8px 24px -8px rgba(0,0,0,.6)", fontSize: size * 0.34 }}
+        style={{ background: "linear-gradient(145deg, #3c9e22, #14561a)", boxShadow: "0 0 0 2px #72c41c, 0 8px 24px -8px rgba(0,0,0,.6)", fontSize: size * 0.34 }}
       >
         {ASSISTANT_PHOTO ? (
           // eslint-disable-next-line @next/next/no-img-element -- zwykłe zdjęcie z /public

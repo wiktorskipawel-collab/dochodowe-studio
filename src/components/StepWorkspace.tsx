@@ -3,10 +3,13 @@
 import { useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { motion } from "motion/react";
-import { Send, LoaderCircle, FileText, Check, PlayCircle, ClipboardCopy, ExternalLink, Wand2, ArrowRight, Lock, Settings } from "lucide-react";
+import { Send, LoaderCircle, FileText, Check, PlayCircle, ClipboardCopy, ExternalLink, Wand2, ArrowRight, Lock, Settings, Download } from "lucide-react";
 import { useJourney, type ChatMessage } from "@/lib/store";
 import { STEPS, stepStatuses, contextDocs } from "@/lib/journey";
+import type { Lesson, Step } from "@/lib/journey-types";
 import { buildManualPrompt } from "@/lib/assistant";
+import { activeAi } from "@/lib/models";
+import { downloadText, fileName } from "@/lib/download";
 import { Pill } from "@/components/ui";
 import { toast } from "sonner";
 import { Message, MessageAvatar, MessageContent, MessageHeader } from "@/components/ui/message";
@@ -16,8 +19,11 @@ import { Spinner } from "@/components/ui/spinner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { AssistantAvatar, ASSISTANT_NAME } from "@/components/Assistant";
 
+// Krok prowadzony przez Bartka (decyzja Pawła 2026-11-27): zapowiedź → lekcja (odhaczenie) → rozmowa → dokument → zatwierdzenie.
+const STAGES = ["Lekcja", "Rozmowa z Bartkiem", "Dokument", "Zatwierdzenie"] as const;
+
 export function StepWorkspace({ stepId }: { stepId: string }) {
-  const { ready, state, setChat, saveDoc, toggleWatched } = useJourney();
+  const { ready, state, setChat, saveDoc, markWatched } = useJourney();
   const step = STEPS.find((s) => s.id === stepId)!;
   const statuses = stepStatuses(state);
   const status = statuses[stepId];
@@ -41,97 +47,174 @@ export function StepWorkspace({ stepId }: { stepId: string }) {
   }
 
   const approved = doc?.status === "approved";
+  const ai = activeAi(state.ai);
+  const lessonsDone = step.lessons.every((l) => state.watched[l.id]);
+  const stage = !lessonsDone ? 0 : approved ? 3 : docText.trim() ? 2 : 1;
+  const name = (state.profile?.name ?? "").trim().split(/\s+/)[0];
+  const intro = introLines(step, name, lessonsDone);
 
   return (
-    <div className="grid gap-5 2xl:grid-cols-[300px_minmax(0,1fr)_420px] xl:grid-cols-[minmax(0,1fr)_400px]">
-      {/* Lewa kolumna: co robimy + lekcje */}
-      <aside className="flex flex-col gap-5 xl:col-span-2 2xl:col-span-1" aria-label="Co robimy w tym kroku">
-        <section className="glass-card rounded-2xl p-5">
-          <h2 className="mb-2 font-semibold">Krok skończony, gdy:</h2>
-          <ul className="flex flex-col gap-2 text-sm text-white/80">
-            {step.exitCriteria.map((c) => (
-              <li key={c} className="flex gap-2">
-                <Check className={`mt-0.5 size-4 shrink-0 ${approved ? "text-emerald-300" : "text-white/40"}`} aria-hidden="true" />
-                {c}
-              </li>
-            ))}
-          </ul>
+    <div className="flex flex-col gap-5">
+      <StageBar stage={stage} />
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_400px] 2xl:grid-cols-[minmax(0,1fr)_440px]">
+        {/* Rozmowa: Bartek zapowiada krok, prowadzi przez lekcję, potem pyta */}
+        <section className="flex min-w-0 flex-col gap-3" aria-label="Rozmowa z asystentem">
+          {!lessonsDone ? (
+            <>
+              <div className="glass-card flex flex-col gap-5 rounded-2xl p-4 md:p-5">
+                {intro.map((line, i) => <BartekLine key={i} text={line} />)}
+              </div>
+              <LessonGate lessons={step.lessons} watched={state.watched} onDone={() => markWatched(step.lessons.map((l) => l.id))} />
+            </>
+          ) : ai?.mode === "manual" ? (
+            <ManualMode stepId={stepId} onPaste={(t) => { setDraft(t); }} />
+          ) : ai ? (
+            <AssistantChat stepId={stepId} prelude={intro} provider={ai.mode} model={ai.model} messages={state.chats[stepId] ?? []} onChange={(m) => setChat(stepId, m)} onDocument={(t) => setDraft(t)} />
+          ) : (
+            <div className="glass-card flex flex-col items-start gap-3 rounded-2xl p-6">
+              <h2 className="text-lg font-semibold">Połącz swój ChatGPT, żeby zacząć rozmowę</h2>
+              <p className="text-white/75">W tym kroku asystent zadaje pytania i pomaga napisać dokument. Korzysta z Twojego ChatGPT albo Claude. Jedno kliknięcie i wracasz tutaj.</p>
+              <Link href={`/polacz?wroc=/krok/${stepId}`} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand px-5 font-semibold text-brand-ink"><Settings className="size-4" aria-hidden="true" />Połącz ChatGPT</Link>
+            </div>
+          )}
+          <p className="text-xs text-white/60">Odpowiedzi tworzy sztuczna inteligencja na podstawie metodyki Dochodowego Studia. Ważne decyzje zatwierdzasz Ty.</p>
         </section>
-        {step.lessons.length ? (
+
+        {/* Dokument kroku: szkic, zatwierdzenie, pobranie */}
+        <aside className="flex flex-col gap-5" aria-label="Dokument kroku">
+          <section className="glass-card flex flex-col gap-3 rounded-2xl p-5" aria-labelledby="doc-h">
+            <div className="flex items-center justify-between gap-2">
+              <h2 id="doc-h" className="flex items-center gap-2 font-semibold"><FileText className="size-5 text-brand" aria-hidden="true" />{step.docTitle}</h2>
+              {approved ? <Pill tone="good">Zatwierdzony</Pill> : docText ? <Pill tone="warn">Szkic</Pill> : <Pill>Pusty</Pill>}
+            </div>
+            <label htmlFor="doc" className="sr-only">Treść dokumentu: {step.docTitle}</label>
+            <textarea
+              id="doc"
+              value={docText}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder={step.docTemplate}
+              rows={18}
+              className="min-h-72 w-full resize-y rounded-xl border border-white/15 bg-black/25 p-3 text-sm leading-relaxed text-white placeholder:text-white/35 focus:border-brand focus:outline-none"
+            />
+            <div className="flex flex-wrap gap-2">
+              <button type="button" disabled={!docText.trim()} onClick={() => { saveDoc(step.docId, docText, "draft"); setDraft(null); }}
+                className="inline-flex min-h-11 items-center rounded-xl border border-white/20 px-4 text-sm font-semibold hover:bg-white/10 disabled:opacity-40">
+                Zapisz szkic
+              </button>
+              <button type="button" disabled={!docText.trim()} onClick={() => { saveDoc(step.docId, docText, "approved", step.docTitle); setDraft(null); }}
+                className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-brand-ink hover:brightness-95 disabled:opacity-40">
+                <Check className="size-4" aria-hidden="true" />Zatwierdzam dokument
+              </button>
+              <button type="button" disabled={!docText.trim()} onClick={() => downloadText(fileName(step.docTitle), `${step.docTitle}\n\n${docText}`)}
+                className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/20 px-4 text-sm font-semibold hover:bg-white/10 disabled:opacity-40">
+                <Download className="size-4" aria-hidden="true" />Pobierz
+              </button>
+            </div>
+            {approved && next ? (
+              <Link href={`/krok/${next.id}`} className="inline-flex min-h-11 items-center justify-between gap-2 rounded-xl bg-white px-4 text-sm font-semibold text-neutral-900 hover:bg-white/90">
+                Następny krok: {next.title}<ArrowRight className="size-4" aria-hidden="true" />
+              </Link>
+            ) : null}
+          </section>
           <section className="glass-card rounded-2xl p-5">
-            <h2 className="mb-3 font-semibold">Lekcje do tego kroku</h2>
-            <ul className="flex flex-col gap-2">
-              {step.lessons.map((l) => {
-                const seen = !!state.watched[l.id];
-                return (
-                  <li key={l.id} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
-                    <PlayCircle className="size-5 shrink-0 text-brand" aria-hidden="true" />
-                    <span className="min-w-0 flex-1 text-sm"><strong className="block font-semibold">{l.title}</strong><span className="text-white/60">{l.source}</span></span>
-                    <button type="button" onClick={() => toggleWatched(l.id)} aria-pressed={seen} aria-label={seen ? `Oznacz „${l.title}” jako nieobejrzaną` : `Oznacz „${l.title}” jako obejrzaną`}
-                      className={`grid size-11 shrink-0 place-items-center rounded-xl border ${seen ? "border-emerald-400 bg-emerald-400 text-neutral-900" : "border-white/25 text-white/60 hover:border-white/50"}`}>
-                      <Check className="size-4" aria-hidden="true" />
-                    </button>
-                  </li>
-                );
-              })}
+            <h2 className="mb-2 font-semibold">Krok skończony, gdy:</h2>
+            <ul className="flex flex-col gap-2 text-sm text-white/80">
+              {step.exitCriteria.map((c) => (
+                <li key={c} className="flex gap-2">
+                  <Check className={`mt-0.5 size-4 shrink-0 ${approved ? "text-emerald-300" : "text-white/40"}`} aria-hidden="true" />
+                  {c}
+                </li>
+              ))}
             </ul>
           </section>
-        ) : null}
-      </aside>
-
-      {/* Środek: asystent */}
-      <section className="flex min-w-0 flex-col gap-3" aria-label="Asystent">
-        {state.ai.mode === "manual" ? (
-          <ManualMode stepId={stepId} onPaste={(t) => { setDraft(t); }} />
-        ) : state.ai.mode ? (
-          <AssistantChat stepId={stepId} messages={state.chats[stepId] ?? []} onChange={(m) => setChat(stepId, m)} onDocument={(t) => setDraft(t)} />
-        ) : (
-          <div className="glass-card flex flex-col items-start gap-3 rounded-2xl p-6">
-            <h2 className="text-lg font-semibold">Połącz swój ChatGPT, żeby zacząć rozmowę</h2>
-            <p className="text-white/75">W tym kroku asystent zadaje pytania i pomaga napisać dokument. Korzysta z Twojego ChatGPT albo Claude. Jedno kliknięcie i wracasz tutaj.</p>
-            <Link href={`/polacz?wroc=/krok/${stepId}`} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand px-5 font-semibold text-brand-ink"><Settings className="size-4" aria-hidden="true" />Połącz ChatGPT</Link>
-          </div>
-        )}
-        <p className="text-xs text-white/60">Odpowiedzi tworzy sztuczna inteligencja na podstawie metodyki Dochodowego Studia. Ważne decyzje zatwierdzasz Ty.</p>
-      </section>
-
-      {/* Prawa kolumna: dokument */}
-      <section className="glass-card flex flex-col gap-3 rounded-2xl p-5" aria-labelledby="doc-h">
-        <div className="flex items-center justify-between gap-2">
-          <h2 id="doc-h" className="flex items-center gap-2 font-semibold"><FileText className="size-5 text-brand" aria-hidden="true" />{step.docTitle}</h2>
-          {approved ? <Pill tone="good">Zatwierdzony</Pill> : docText ? <Pill tone="warn">Szkic</Pill> : <Pill>Pusty</Pill>}
-        </div>
-        <label htmlFor="doc" className="sr-only">Treść dokumentu: {step.docTitle}</label>
-        <textarea
-          id="doc"
-          value={docText}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder={step.docTemplate}
-          rows={18}
-          className="min-h-72 w-full resize-y rounded-xl border border-white/15 bg-black/25 p-3 text-sm leading-relaxed text-white placeholder:text-white/35 focus:border-brand focus:outline-none"
-        />
-        <div className="flex flex-wrap gap-2">
-          <button type="button" disabled={!docText.trim()} onClick={() => { saveDoc(step.docId, docText, "draft"); setDraft(null); }}
-            className="inline-flex min-h-11 items-center rounded-xl border border-white/20 px-4 text-sm font-semibold hover:bg-white/10 disabled:opacity-40">
-            Zapisz szkic
-          </button>
-          <button type="button" disabled={!docText.trim()} onClick={() => { saveDoc(step.docId, docText, "approved", step.docTitle); setDraft(null); }}
-            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-brand-ink hover:brightness-95 disabled:opacity-40">
-            <Check className="size-4" aria-hidden="true" />Zatwierdzam dokument
-          </button>
-        </div>
-        {approved && next ? (
-          <Link href={`/krok/${next.id}`} className="inline-flex min-h-11 items-center justify-between gap-2 rounded-xl bg-white px-4 text-sm font-semibold text-neutral-900 hover:bg-white/90">
-            Następny krok: {next.title}<ArrowRight className="size-4" aria-hidden="true" />
-          </Link>
-        ) : null}
-      </section>
+        </aside>
+      </div>
     </div>
   );
 }
 
-function AssistantChat({ stepId, messages, onChange, onDocument }: {
+/** Co Bartek mówi na wejściu do kroku. DO ZATWIERDZENIA: brzmienie (Bartek). */
+function introLines(step: Step, name: string, lessonsDone: boolean) {
+  const lines = [`Hej${name ? `, ${name}` : ""}! Zaczynamy: ${step.title}. ${step.goal}`];
+  if (!step.lessons.length) lines.push("Tu nie ma lekcji, więc od razu przechodzimy do pytań.");
+  else if (!lessonsDone) lines.push(step.lessons.length === 1
+    ? "Najpierw krótka lekcja. Obejrzyj ją i odhacz, potem pogadamy. Bez lekcji moje pytania nie będą miały sensu."
+    : "Najpierw krótkie lekcje. Obejrzyj je i odhacz, potem pogadamy. Bez lekcji moje pytania nie będą miały sensu.");
+  else lines.push("Lekcja zaliczona. Teraz kilka pytań, jedno po drugim.");
+  return lines;
+}
+
+function StageBar({ stage }: { stage: number }) {
+  return (
+    <ol className="glass-card flex flex-wrap gap-2 rounded-2xl p-2" aria-label="Etapy kroku">
+      {STAGES.map((label, i) => {
+        const done = i < stage || (i === 3 && stage === 3);
+        const current = i === stage && stage !== 3;
+        return (
+          <li key={label} aria-current={current ? "step" : undefined}
+            className={`flex min-h-11 flex-1 items-center gap-2 rounded-xl px-3 text-sm font-semibold ${current ? "bg-brand text-brand-ink" : done ? "bg-white/10 text-white" : "text-white/55"}`}>
+            <span className={`grid size-6 shrink-0 place-items-center rounded-full text-xs ${current ? "bg-brand-ink/15" : done ? "bg-emerald-400/25 text-emerald-200" : "bg-white/10"}`}>
+              {done ? <Check className="size-3.5" aria-hidden="true" /> : i + 1}
+            </span>
+            {label}
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+function BartekLine({ text, talking }: { text: string; talking?: boolean }) {
+  return (
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+      <Message>
+        <MessageAvatar><AssistantAvatar size={36} talking={talking} /></MessageAvatar>
+        <MessageContent>
+          <MessageHeader>{ASSISTANT_NAME} · asystent AI</MessageHeader>
+          <Bubble variant="tinted"><BubbleContent className="whitespace-pre-wrap leading-relaxed">{text}</BubbleContent></Bubble>
+        </MessageContent>
+      </Message>
+    </motion.div>
+  );
+}
+
+/** Lekcje kroku przed rozmową. Wideo pojawi się po przeniesieniu kursu do odtwarzacza (pole video w lekcji). */
+function LessonGate({ lessons, watched, onDone }: { lessons: Lesson[]; watched: Record<string, boolean>; onDone: () => void }) {
+  return (
+    <section className="glass-card flex flex-col gap-4 rounded-2xl p-5" aria-labelledby="lekcja-h">
+      <h2 id="lekcja-h" className="flex items-center gap-2 font-semibold">
+        <PlayCircle className="size-5 text-brand" aria-hidden="true" />{lessons.length === 1 ? "Lekcja do tego kroku" : "Lekcje do tego kroku"}
+      </h2>
+      {lessons.map((l) => (
+        <div key={l.id} className="flex flex-col gap-2">
+          {l.video ? (
+            <iframe src={l.video} title={l.title} allow="encrypted-media; picture-in-picture; fullscreen" loading="lazy" className="aspect-video w-full rounded-xl border border-white/10 bg-black" />
+          ) : (
+            <div className="grid aspect-video w-full place-items-center rounded-xl border border-dashed border-white/20 bg-black/30 p-4 text-center">
+              <span className="flex flex-col items-center gap-2 text-sm text-white/65">
+                <PlayCircle className="size-10 text-white/40" aria-hidden="true" />
+                Tu pojawi się wideo, gdy przeniesiemy kurs do odtwarzacza platformy.
+              </span>
+            </div>
+          )}
+          <p className="text-sm">
+            <strong className="font-semibold">{l.title}</strong> <span className="text-white/60">· {l.source}</span>
+            {watched[l.id] ? <span className="ml-2 text-emerald-300">zaliczona</span> : null}
+          </p>
+        </div>
+      ))}
+      <button type="button" onClick={onDone} className="inline-flex min-h-12 w-fit items-center gap-2 rounded-xl bg-brand px-5 font-bold text-brand-ink hover:brightness-105">
+        <Check className="size-4" aria-hidden="true" />Obejrzane, lecimy do pytań
+      </button>
+    </section>
+  );
+}
+
+function AssistantChat({ stepId, prelude, provider, model, messages, onChange, onDocument }: {
   stepId: string;
+  prelude: string[];
+  provider: string;
+  model: string;
   messages: ChatMessage[];
   onChange: (m: ChatMessage[]) => void;
   onDocument: (text: string) => void;
@@ -149,8 +232,8 @@ function AssistantChat({ stepId, messages, onChange, onDocument }: {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        provider: state.ai.mode,
-        model: state.ai.model,
+        provider,
+        model,
         stepId,
         mode,
         messages: history,
@@ -210,6 +293,7 @@ function AssistantChat({ stepId, messages, onChange, onDocument }: {
   return (
     <>
       <div className="glass-card flex flex-col gap-5 rounded-2xl p-4 md:p-5" aria-live="polite">
+        {prelude.map((line, i) => <BartekLine key={`p${i}`} text={line} />)}
         {shown.map((m, i) => {
           const pending = !m.content && busy && i === shown.length - 1;
           return (
@@ -298,7 +382,7 @@ function ManualMode({ stepId, onPaste }: { stepId: string; onPaste: (t: string) 
         </div>
       </div>
       <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={() => openIn("https://chatgpt.com/?q=", "ChatGPT")} className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-brand px-5 font-bold text-brand-ink shadow-[0_10px_30px_-12px_rgba(221,153,51,.9)] hover:brightness-105">
+        <button type="button" onClick={() => openIn("https://chatgpt.com/?q=", "ChatGPT")} className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-brand px-5 font-bold text-brand-ink shadow-[0_10px_30px_-12px_rgba(114,196,28,.55)] hover:brightness-105">
           <ExternalLink className="size-4" aria-hidden="true" />Otwórz w moim ChatGPT
         </button>
         <button type="button" onClick={() => openIn("https://claude.ai/new?q=", "Claude")} className="inline-flex min-h-12 items-center gap-2 rounded-xl border border-white/20 px-4 text-sm font-semibold hover:bg-white/10">Otwórz w Claude</button>

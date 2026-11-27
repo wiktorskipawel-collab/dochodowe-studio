@@ -23,7 +23,7 @@ export function BrandLogo() {
   return (
     <div className="flex flex-col items-center gap-2 text-center">
       {/* eslint-disable-next-line @next/next/no-img-element -- statyczny logotyp */}
-      <img src="/logo-ds.png" alt="Dochodowe Studio" width={168} height={96} className="h-20 w-auto drop-shadow-[0_8px_24px_rgba(22,163,123,.5)]" />
+      <img src="/logo-ds.png" alt="Dochodowe Studio" width={168} height={96} className="h-20 w-auto drop-shadow-[0_8px_24px_rgba(114,196,28,.4)]" />
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Marketing OS</p>
     </div>
   );

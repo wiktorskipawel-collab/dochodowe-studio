@@ -3,6 +3,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Gate } from "@/components/Gate";
 import { AssistantHost } from "@/components/AssistantStage";
+import { PreviewBanner } from "@/components/PreviewBanner";
 
 export default function AppLayout({ children }: LayoutProps<"/">) {
   return (
@@ -11,7 +12,7 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
         <AppSidebar variant="inset" />
         <SidebarInset className="bg-transparent md:peer-data-[variant=inset]:shadow-none">
           <SiteHeader />
-          <div className="@container/main flex flex-1 flex-col gap-5 p-4 pb-28 lg:p-6 lg:pb-28">{children}</div>
+          <div className="@container/main flex flex-1 flex-col gap-5 p-4 pb-28 lg:p-6 lg:pb-28"><PreviewBanner />{children}</div>
         </SidebarInset>
         <AssistantHost />
       </SidebarProvider>

@@ -21,6 +21,8 @@ export type Reward = { xp: number; title: string; levelUp?: string; big?: boolea
 export type JourneyState = {
   version: 1;
   demo?: boolean; // dane przykładowe z przycisku „Zobacz demo”
+  preview?: boolean; // TRYB POKAZU (?pokaz=1): wszystkie kroki odblokowane na tym koncie. Przed startem usunąć albo ograniczyć.
+  onboarded?: string; // kiedy ktoś zamknął powitanie z wideo / przewodnik po pulpicie (brak = pokaż przy wejściu)
   profile: { name: string; email: string } | null; // PROTOTYP: konto w tej przeglądarce, docelowo Supabase Auth
   ai: { mode: ConnectionMode | null; model: string };
   survey: Record<string, string> | null;
@@ -73,6 +75,9 @@ type Ctx = {
   setChat: (stepId: string, messages: ChatMessage[]) => void;
   saveDoc: (docId: string, content: string, status?: DocStatus, title?: string) => void;
   toggleWatched: (lessonId: string) => void;
+  markWatched: (lessonIds: string[]) => void;
+  setPreview: (on: boolean) => void;
+  setOnboarded: () => void;
   reset: () => void;
   loadDemo: () => void;
   signIn: (profile: { name: string; email: string }) => void;
@@ -163,6 +168,18 @@ export function JourneyProvider({ children }: { children: ReactNode }) {
     return () => clearTimeout(t);
   }, [state, ready]);
 
+  // Tryb pokazu włączany adresem: ?pokaz=1 włącza, ?pokaz=0 wyłącza. Dopisek znika z paska adresu.
+  useEffect(() => {
+    if (!ready) return;
+    const url = new URL(window.location.href);
+    const flag = url.searchParams.get("pokaz");
+    if (flag !== "1" && flag !== "0") return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- jednorazowe odczytanie przełącznika z adresu
+    setState((cur) => ({ ...cur, preview: flag === "1" }));
+    url.searchParams.delete("pokaz");
+    window.history.replaceState(null, "", url.pathname + url.search + url.hash);
+  }, [ready]);
+
   /** Zmiana stanu + zdarzenie (XP). Pokazuje nagrodę, a przy awansie — nowy poziom. */
   const commit = useCallback((prev: JourneyState, next: JourneyState, event?: Omit<JourneyEvent, "at">, title?: string, big?: boolean) => {
     if (!event) return setState(next);
@@ -206,6 +223,19 @@ export function JourneyProvider({ children }: { children: ReactNode }) {
         const next = { ...s, watched: { ...s.watched, [lessonId]: on } };
         commit(s, next, on && once("lesson", lessonId) ? { type: "lesson", ref: lessonId } : undefined, on && once("lesson", lessonId) ? "Lekcja obejrzana" : undefined);
       },
+      markWatched: (ids) => {
+        const fresh = ids.filter((id) => !s.watched[id]);
+        if (!fresh.length) return;
+        const watched = { ...s.watched };
+        for (const id of fresh) watched[id] = true;
+        const scored = fresh.filter((id) => once("lesson", id));
+        const now = new Date().toISOString();
+        const earlier = scored.slice(0, -1).map((ref) => ({ type: "lesson" as const, ref, at: now }));
+        const last = scored.at(-1);
+        commit(s, { ...s, watched, events: [...s.events, ...earlier] }, last ? { type: "lesson", ref: last } : undefined, last ? "Lekcja zaliczona" : undefined);
+      },
+      setPreview: (on) => setState((cur) => ({ ...cur, preview: on })),
+      setOnboarded: () => setState((cur) => (cur.onboarded ? cur : { ...cur, onboarded: new Date().toISOString() })),
       reset: () => setState(EMPTY),
       loadDemo: () => {
         const demo = demoState();

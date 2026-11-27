@@ -40,6 +40,8 @@ Od tej chwili przycisk „Kontynuuj z Google” otwiera wybór konta Google i wr
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
    - `COOKIE_SECRET` (skopiuj z `.env.local`, min. 32 znaki)
+   - `OPENROUTER_API_KEY` (klucz platformy z openrouter.ai, z limitem wydatków) i `NEXT_PUBLIC_AI_MODEL` (np. `deepseek/deepseek-v3.2`) — asystent działa wtedy na koszt platformy, uczestnik niczego nie łączy
+   - opcjonalnie `NEXT_PUBLIC_BARTEK_KALENDARZ` (link do umawiania rozmów 30 min) i `NEXT_PUBLIC_WIDEO_POWITALNE` (adres wideo powitalnego)
    - opcjonalnie `SITE_PASSWORD` — hasło na całą stronę na czas testów
 3. **Deploy**. Region serwera: Frankfurt (`vercel.json`).
 4. Wróć do Supabase (krok 1.4) i wpisz adres z Vercel.
@@ -48,7 +50,7 @@ Od tej chwili przycisk „Kontynuuj z Google” otwiera wybór konta Google i wr
 
 - Rejestracja e-mailem → przychodzi mail z potwierdzeniem → link wraca do ankiety z Bartkiem → pulpit.
 - „Kontynuuj z Google” → wybór konta → ankieta z Bartkiem → pulpit.
-- W kroku ścieżki: „Połącz ChatGPT” → po połączeniu powrót do tego samego kroku.
+- W kroku ścieżki: zapowiedź Bartka → lekcja („Obejrzane, lecimy do pytań”) → rozmowa z asystentem → „Przygotuj dokument z rozmowy” → Zatwierdzam / Pobierz.
 - W nagłówku pulpitu: „Zapisano w chmurze”. Postęp zostaje po zalogowaniu na innym komputerze.
 
 ## Uwagi

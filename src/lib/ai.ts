@@ -16,13 +16,14 @@ export class AiError extends Error {
   }
 }
 
-/** Klucz: najpierw uczestnika (z zaszyfrowanego ciasteczka), a jeśli go nie ma — klucz platformy z .env.local (np. na pokaz). */
-export async function resolveKey(provider: Provider) {
+/** Klucz: najpierw uczestnika (z zaszyfrowanego ciasteczka), a jeśli go nie ma — klucz platformy z .env.local / Vercel.
+ *  platform = true: płaci platforma, więc trasa musi sprawdzić, czy pyta zalogowana osoba. */
+export async function resolveKey(provider: Provider): Promise<{ key: string | undefined; platform: boolean }> {
   const secret = await readAiSecret();
-  if (secret?.provider === provider) return secret.key;
-  if (provider === "openai") return process.env.OPENAI_API_KEY;
-  if (provider === "anthropic") return process.env.ANTHROPIC_API_KEY;
-  return process.env.OPENROUTER_API_KEY;
+  if (secret?.provider === provider) return { key: secret.key, platform: false };
+  if (provider === "openai") return { key: process.env.OPENAI_API_KEY, platform: true };
+  if (provider === "anthropic") return { key: process.env.ANTHROPIC_API_KEY, platform: true };
+  return { key: process.env.OPENROUTER_API_KEY, platform: true };
 }
 
 const encoder = new TextEncoder();
@@ -48,15 +49,19 @@ async function streamOpenRouter(opts: Parameters<typeof streamAssistant>[0]) {
     defaultHeaders: { "X-Title": "Marketing OS · Dochodowe Studio" },
   });
   try {
-    const stream = await client.chat.completions.create({
+    // provider.data_collection = "deny": OpenRouter wybiera tylko dostawców, którzy nie zapisują i nie trenują na rozmowach
+    // (dla DeepSeeka wyklucza to serwery w Chinach). Pole spoza typów SDK OpenAI — OpenRouter je odczytuje.
+    const params = {
       model: opts.model,
       messages: [
-        { role: "system", content: `${opts.staticSystem}\n\n${opts.dynamicSystem}` },
+        { role: "system" as const, content: `${opts.staticSystem}\n\n${opts.dynamicSystem}` },
         ...opts.messages.map((m) => ({ role: m.role, content: m.content })),
       ],
       max_tokens: LIMITS.maxOutputTokens,
-      stream: true,
-    });
+      stream: true as const,
+      provider: { data_collection: "deny" },
+    };
+    const stream = await client.chat.completions.create(params);
     return new ReadableStream<Uint8Array>({
       async start(controller) {
         try {
@@ -74,7 +79,7 @@ async function streamOpenRouter(opts: Parameters<typeof streamAssistant>[0]) {
   } catch (err) {
     if (err instanceof OpenAIError) {
       if (err.status === 401) throw new AiError(401, "Połączenie z AI wygasło albo zostało cofnięte. Połącz się ponownie w „Połącz AI”.");
-      if (err.status === 402) throw new AiError(402, "Na Twoim koncie OpenRouter skończyły się środki albo limit klucza. Doładuj konto na openrouter.ai.");
+      if (err.status === 402) throw new AiError(402, "Skończyły się środki albo limit klucza AI. Konto OpenRouter trzeba doładować.");
       if (err.status === 429) throw new AiError(429, "Za dużo zapytań naraz. Spróbuj za chwilę.");
       if (err.status === 404 || err.status === 400) throw new AiError(400, `Model „${opts.model}” jest teraz niedostępny. Wybierz inny w „Połącz AI”.`);
     }

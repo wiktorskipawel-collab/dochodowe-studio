@@ -5,20 +5,22 @@
 @custom-variant dark (&:is(.dark *));
 
 /* Marketing OS — styl „glassy” w barwach Dochodowego Studia (Bartłomiej Sikorski):
-   zieleń #007F5F i złoto #DD9933 ze strony bartlomiej-sikorski.pl, czcionka Montserrat.
+   zieleń z logo DS (#72C41C, cień #1A7F2A) jako kolor marki, biel jako drugi kolor,
+   pomarańcz #DD9933 tylko jako akcent (XP, seria, nagrody). Czcionka Montserrat.
    Kolor marki zmieniasz w jednym miejscu: --brand (klasy bg-brand, text-brand…).
    --accent, --primary itd. to kolory komponentów shadcn/ui — aplikacja działa zawsze w trybie .dark. */
 :root {
-  --bg: #07130f;
+  --bg: #071109;
   --ink: #ffffff;
   --muted: oklch(0.97 0 0);
   --accent: oklch(0.97 0 0);
-  --brand: #dd9933; /* złoto DS: główne przyciski, XP */
-  --brand-ink: #1a1206;
-  --green: #16a37b; /* zieleń DS rozjaśniona pod ciemne tło: postęp */
-  --green-strong: #007f5f; /* zieleń DS z logo */
+  --brand: #72c41c; /* zieleń z logo DS: główne przyciski, aktywne elementy */
+  --brand-ink: #0a1705;
+  --orange: #dd9933; /* pomarańcz DS: akcent */
+  --green: #4fb52a; /* zieleń z logo rozjaśniona pod ciemne tło: postęp */
+  --green-strong: #1a7f2a; /* ciemna zieleń z logo */
   /* Wykresy — paleta sprawdzona walidatorem (tryb ciemny, tło #0f1f19) */
-  --viz-done: #16a37b;
+  --viz-done: #4fb52a;
   --viz-progress: #bd8222;
   --viz-todo: #4b8fdb;
   --viz-track: rgba(255, 255, 255, 0.09);
@@ -66,6 +68,7 @@
   --color-accent: var(--accent);
   --color-brand: var(--brand);
   --color-brand-ink: var(--brand-ink);
+  --color-orange: var(--orange);
   --color-green: var(--green);
   --color-green-strong: var(--green-strong);
   --color-good: var(--good);
@@ -133,10 +136,10 @@ body::before {
   z-index: -1;
   pointer-events: none;
   background-image:
-    radial-gradient(60rem 40rem at 8% -5%, rgba(0, 127, 95, 0.42), transparent 60%),
-    radial-gradient(46rem 30rem at 95% 5%, rgba(221, 153, 51, 0.16), transparent 60%),
-    radial-gradient(70rem 48rem at 55% 115%, rgba(0, 112, 84, 0.34), transparent 65%),
-    linear-gradient(160deg, #0c2019 0%, #07130f 55%, #040b08 100%);
+    radial-gradient(60rem 40rem at 8% -5%, rgba(46, 140, 30, 0.38), transparent 60%),
+    radial-gradient(46rem 30rem at 95% 5%, rgba(221, 153, 51, 0.10), transparent 60%),
+    radial-gradient(70rem 48rem at 55% 115%, rgba(30, 110, 25, 0.30), transparent 65%),
+    linear-gradient(160deg, #0d1f0e 0%, #071109 55%, #040904 100%);
 }
 
 @layer components {
@@ -165,7 +168,7 @@ body::before {
     z-index: -1;
     opacity: 0;
     transition: opacity 0.4s;
-    background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 50%), rgba(221, 153, 51, 0.14), rgba(22, 163, 123, 0.06) 40%, transparent 70%);
+    background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 50%), rgba(114, 196, 28, 0.14), rgba(255, 255, 255, 0.04) 40%, transparent 70%);
   }
   .glass-card:hover::before,
   .glass-strong:hover::before,
@@ -174,14 +177,14 @@ body::before {
   }
   .glass-card:hover,
   [data-slot="card"]:hover {
-    border-color: rgba(221, 153, 51, 0.28);
+    border-color: rgba(114, 196, 28, 0.32);
   }
   [data-slot="card"] {
     backdrop-filter: blur(24px) saturate(140%);
     -webkit-backdrop-filter: blur(24px) saturate(140%);
   }
   .glass-strong {
-    background: rgba(4, 18, 13, 0.6);
+    background: rgba(5, 16, 7, 0.6);
     border: 1px solid rgba(255, 255, 255, 0.14);
     backdrop-filter: blur(28px);
     -webkit-backdrop-filter: blur(28px);
@@ -191,6 +194,36 @@ body::before {
 :focus-visible {
   outline: 3px solid var(--brand);
   outline-offset: 2px;
+}
+
+/* „Wciśnięcie”: każdy przycisk i link-przycisk lekko się zmniejsza pod palcem i sprężyście wraca.
+   Używa właściwości `scale`, więc nie gryzie się z animacjami Motion/GSAP (te sterują `transform`).
+   W warstwie base: klasy Tailwinda (transition-…) mają pierwszeństwo tam, gdzie są. */
+@layer base {
+  button:not(:disabled),
+  [role="button"],
+  a[class*="min-h-11"],
+  [data-slot="sidebar-menu-button"] {
+    transition-property: scale, color, background-color, border-color, box-shadow, opacity, filter, gap;
+    transition-duration: 0.18s;
+    transition-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  button:not(:disabled):active,
+  [role="button"]:active,
+  a[class*="min-h-11"]:active,
+  [data-slot="sidebar-menu-button"]:active {
+    scale: 0.96;
+  }
+}
+
+/* Droga do następnego kroku na mapie „płynie” */
+@keyframes dash-flow {
+  to {
+    stroke-dashoffset: -28;
+  }
+}
+.dash-flow {
+  animation: dash-flow 1.1s linear infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -204,43 +237,43 @@ body::before {
 
 .dark {
   /* Komponenty shadcn w barwach Dochodowego Studia */
-  --background: #07130f;
+  --background: #071109;
   --foreground: #f3f6f4;
   --card: rgba(255, 255, 255, 0.05);
   --card-foreground: #f3f6f4;
-  --popover: #0c1d17;
+  --popover: #0c1a0d;
   --popover-foreground: #f3f6f4;
-  --primary: #dd9933;
-  --primary-foreground: #1a1206;
+  --primary: #72c41c;
+  --primary-foreground: #0a1705;
   --secondary: rgba(255, 255, 255, 0.08);
   --secondary-foreground: #f3f6f4;
   --muted: rgba(255, 255, 255, 0.07);
-  --muted-foreground: #a9b8b1;
+  --muted-foreground: #aab8ab;
   --accent: rgba(255, 255, 255, 0.08);
   --accent-foreground: #f3f6f4;
   --destructive: #f87171;
   --border: rgba(255, 255, 255, 0.1);
   --input: rgba(255, 255, 255, 0.16);
-  --ring: #dd9933;
-  --chart-1: #16a37b;
+  --ring: #72c41c;
+  --chart-1: #4fb52a;
   --chart-2: #dd9933;
   --chart-3: #4b8fdb;
   --chart-4: #bd8222;
   --chart-5: #7d5c23;
-  --sidebar: rgba(4, 16, 12, 0.55);
+  --sidebar: rgba(4, 14, 6, 0.55);
   --sidebar-foreground: #e6ece9;
-  --sidebar-primary: #dd9933;
-  --sidebar-primary-foreground: #1a1206;
+  --sidebar-primary: #72c41c;
+  --sidebar-primary-foreground: #0a1705;
   --sidebar-accent: rgba(255, 255, 255, 0.07);
   --sidebar-accent-foreground: #ffffff;
   --sidebar-border: rgba(255, 255, 255, 0.08);
-  --sidebar-ring: #dd9933;
+  --sidebar-ring: #72c41c;
   /* etapy ścieżki: zielona rampa (walidator: ordinal, tryb ciemny) */
-  --phase-1: #0f6b51;
-  --phase-2: #128a68;
-  --phase-3: #16a37b;
-  --phase-4: #45c49a;
-  --phase-5: #86dfbd;
+  --phase-1: #1f6e1a;
+  --phase-2: #2e8f22;
+  --phase-3: #4fb52a;
+  --phase-4: #79cf3e;
+  --phase-5: #a9e47a;
 }
 
 @layer base {

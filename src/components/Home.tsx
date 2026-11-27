@@ -7,6 +7,8 @@ import { useJourney } from "@/lib/store";
 import { STEPS, STAGES, stepStatuses, progressPercent, currentStep, allLessons } from "@/lib/journey";
 import { xpTotal, levelOf, streakDays, activityGrid, phaseProgress, docCompleteness, badges, weeklyActivity, dailySeries, lastWeek } from "@/lib/gamification";
 import { AssistantAvatar, Typewriter, ASSISTANT_NAME } from "@/components/Assistant";
+import { Milestones } from "@/components/Milestones";
+import { Onboarding } from "@/components/Onboarding";
 import { ChartCard, DataTable, Ring, SegmentedBar, MeterList, Heatmap } from "@/components/Charts";
 import { PhasesRadial, WeekStacked, ActivityLine } from "@/components/DashboardCharts";
 import { Card, CardAction, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -60,9 +62,9 @@ export function Home() {
         </div>
       ) : null}
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-        <motion.section initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} className="glass-strong relative overflow-hidden rounded-3xl p-6 md:p-8">
-          <div aria-hidden="true" className="pointer-events-none absolute -bottom-28 -left-20 size-80 rounded-full bg-[radial-gradient(circle,rgba(0,127,95,.45),transparent_65%)]" />
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+        <motion.section data-tour="hero" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} className="glass-strong relative overflow-hidden rounded-3xl p-6 md:p-8">
+          <div aria-hidden="true" className="pointer-events-none absolute -bottom-28 -left-20 size-80 rounded-full bg-[radial-gradient(circle,rgba(46,140,30,.45),transparent_65%)]" />
           <div className="relative flex flex-col gap-5">
             <div className="flex items-start gap-4">
               <AssistantAvatar size={72} talking />
@@ -73,7 +75,7 @@ export function Home() {
               </div>
             </div>
             {cur ? (
-              <motion.div whileHover={{ y: -4 }}>
+              <motion.div data-tour="next-step" whileHover={{ y: -4 }} whileTap={{ scale: 0.98 }}>
                 <Link href={`/krok/${cur.id}`} className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/5 p-4 transition hover:border-brand/60">
                   <span className="flex items-center gap-4">
                     <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-brand text-lg font-extrabold text-brand-ink">{cur.no}</span>
@@ -86,7 +88,7 @@ export function Home() {
           </div>
         </motion.section>
 
-        <motion.section initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="glass-card flex items-center gap-6 rounded-3xl p-6 md:p-8">
+        <motion.section data-tour="progress" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="glass-card flex items-center gap-6 rounded-3xl p-6 md:p-8">
           <Ring value={pct} size={150} stroke={12} label="Cała ścieżka" sub="ścieżki" />
           <div className="flex min-w-0 flex-1 flex-col gap-3">
             <div>
@@ -102,16 +104,19 @@ export function Home() {
             <div className="flex flex-wrap gap-2">
               <Pill tone="warn"><Flame className="size-3.5" aria-hidden="true" />{streak} {streak === 1 ? "dzień" : "dni"} z rzędu</Pill>
               <Pill><Trophy className="size-3.5" aria-hidden="true" />{earned}/{allBadges.length} odznak</Pill>
-              {stage ? <Pill>{stage.name}</Pill> : null}
+              {stage ? <span className="max-w-full truncate rounded-full bg-white/10 px-2.5 py-1 text-xs font-semibold text-white/85" title={stage.name}>{stage.name}</span> : null}
             </div>
           </div>
         </motion.section>
       </div>
 
+      <Onboarding />
+      <Milestones state={state} />
+
       {/* Karty z liczbami (dashboard-01) */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map((c, i) => (
-          <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 * i }} whileHover={{ y: -5 }}>
+          <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 * i }} whileHover={{ y: -5 }} whileTap={{ scale: 0.97 }}>
             <Link href={c.href} className="block">
               <Card className="@container/card">
                 <CardHeader>
@@ -130,14 +135,14 @@ export function Home() {
         ))}
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
         <PhasesRadial phases={phases} />
         <WeekStacked data={weeklyActivity(state.events, 7)} />
       </div>
 
       <ActivityLine data={dailySeries(state.events, 60)} />
 
-      <div className="grid gap-5 xl:grid-cols-2">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-5 xl:grid-cols-2">
         <ChartCard title={`Twoja ścieżka: ${STEPS.length} kroków`} subtitle="Zatwierdzone, w trakcie i przed Tobą"
           table={<DataTable head={["Stan", "Kroki"]} rows={[["Zatwierdzone", done], ["W trakcie", draft], ["Do zrobienia", avail], ["Później", locked]]} />}>
           <SegmentedBar total={STEPS.length} parts={[
@@ -167,7 +172,7 @@ export function Home() {
         </ChartCard>
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
         <ChartCard title="Kompletność dokumentów" subtitle="Ile pól szablonu masz wypełnionych"
           table={<DataTable head={["Dokument", "Wypełnienie", "Stan"]} rows={docs.map((d) => [d.label, `${d.value}%`, d.approved ? "zatwierdzony" : d.value ? "szkic" : "pusty"])} />}>
           <MeterList color="var(--viz-progress)" rows={docs.map((d) => ({ label: d.label, value: d.value, note: d.approved ? "✓" : `${d.value}%` }))} />
@@ -179,7 +184,7 @@ export function Home() {
               return (
                 <motion.li key={b.id} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.03 }} whileHover={{ y: -4, scale: 1.06 }}
                   className="flex flex-col items-center gap-1.5 text-center" title={`${b.title}: ${b.desc}`}>
-                  <span className={`grid size-14 place-items-center rounded-2xl ${b.earned ? "bg-brand text-brand-ink shadow-[0_8px_24px_-8px_rgba(221,153,51,.9)]" : "bg-white/5 text-white/35"}`}>
+                  <span className={`grid size-14 place-items-center rounded-2xl ${b.earned ? "bg-brand text-brand-ink shadow-[0_8px_24px_-8px_rgba(114,196,28,.55)]" : "bg-white/5 text-white/35"}`}>
                     <Icon className="size-6" aria-hidden="true" />
                   </span>
                   <span className={`text-[11px] font-semibold leading-tight ${b.earned ? "" : "text-white/55"}`}>{b.title}</span>

@@ -492,7 +492,7 @@ export function stepStatuses(state: JourneyState): Record<string, StepStatus> {
   for (const s of STEPS) {
     const doc = state.docs[s.docId];
     if (doc?.status === "approved") out[s.id] = "done";
-    else if (!open) out[s.id] = "locked";
+    else if (!open && !state.preview) out[s.id] = "locked";
     else out[s.id] = doc || state.chats[s.id]?.length ? "draft" : "available";
     if (out[s.id] !== "done") open = false;
   }
@@ -500,8 +500,8 @@ export function stepStatuses(state: JourneyState): Record<string, StepStatus> {
 }
 
 export function progressPercent(state: JourneyState): number {
-  const total = STEPS.length + 2; // + połączenie AI + ankieta
-  const done = (state.ai.mode ? 1 : 0) + (state.survey ? 1 : 0) + STEPS.filter((s) => state.docs[s.docId]?.status === "approved").length;
+  const total = STEPS.length + 1; // + ankieta (AI łączy platforma, uczestnik niczego nie podłącza)
+  const done = (state.survey ? 1 : 0) + STEPS.filter((s) => state.docs[s.docId]?.status === "approved").length;
   return Math.round((done / total) * 100);
 }
 

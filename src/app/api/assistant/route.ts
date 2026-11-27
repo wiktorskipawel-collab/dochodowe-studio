@@ -1,6 +1,7 @@
-// Asystent Marketing OS: przeglądarka → nasz serwer → AI uczestnika (ChatGPT albo Claude) → strumień tekstu.
+// Asystent Marketing OS: przeglądarka → nasz serwer → AI (platformy albo uczestnika) → strumień tekstu.
 import { AiError, LIMITS, resolveKey, streamAssistant, type ChatMessage } from "@/lib/ai";
-import { isAllowedModel, type Provider } from "@/lib/models";
+import { isAllowedModel, platformAi, type Provider } from "@/lib/models";
+import { signedIn } from "@/lib/supabase/server";
 import { buildSystem } from "@/lib/assistant";
 
 const plain = (msg: string, status: number) =>
@@ -57,8 +58,14 @@ export async function POST(request: Request) {
   const model = typeof body.model === "string" ? body.model : "";
   if (!isAllowedModel(provider as Provider, model)) return plain("Wybierz model z listy w ustawieniach AI.", 400);
 
-  const apiKey = await resolveKey(provider);
-  if (!apiKey) return plain("Twoje AI nie jest połączone. Wejdź w „Połącz AI” i zaloguj się.", 401);
+  const { key: apiKey, platform } = await resolveKey(provider);
+  if (!apiKey) {
+    return platformAi
+      ? plain("Asystent nie jest jeszcze włączony (brak klucza AI na serwerze). Daj znać zespołowi Dochodowego Studia.", 503)
+      : plain("Twoje AI nie jest połączone. Wejdź w „Połącz AI” i zaloguj się.", 401);
+  }
+  // Za AI platformy płacimy my: rozmawiać mogą tylko zalogowani uczestnicy.
+  if (platform && !(await signedIn())) return plain("Zaloguj się, żeby rozmawiać z asystentem.", 401);
 
   const stepId = typeof body.stepId === "string" ? body.stepId : "";
   const mode = body.mode === "document" ? "document" : "chat";

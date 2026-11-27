@@ -30,6 +30,24 @@ function nextMove(state: JourneyState): { line: string; cta: Scene["cta"] } {
   return { line: `Dziś na tapecie: „${step.title}”. ${step.goal}`, cta: { label: "Zaczynajmy", href: `/krok/${step.id}` } };
 }
 
+// Bartek mówi wprost, kiedy ktoś odpuszcza (prośba z rozmowy 2026-11-27).
+// DO ZATWIERDZENIA: brzmienie — Bartek może podać własne, mocniejsze teksty; wtedy podmieniamy je tutaj.
+function awayLines(days: number, hi: string) {
+  if (days >= 14) return [`Halo${hi}. ${days} dni ciszy.`, "Tak się studia nie buduje. Nie pytam, co się stało. Pytam: kiedy wracasz? Najlepiej teraz, 15 minut."];
+  if (days >= 7) return [`${days} dni bez ruchu${hi}.`, "W tym czasie klienci poszli do studia, które robi marketing. Wracamy dziś, jeden krok."];
+  return [`Nie było Cię ${days} dni${hi}.`, "Bez wyrzutów, ale marketing studia sam się nie zrobi. Dziś wystarczy 15 minut."];
+}
+
+/** Krok w trakcie od tygodnia albo dłużej: ile dni temu ktoś go zaczął (null = nie dotyczy). */
+function stuckDays(state: JourneyState, now: Date) {
+  const step = currentStep(state);
+  if (!step || stepStatuses(state)[step.id] !== "draft") return null;
+  const touches = state.events.filter((e) => e.ref === step.id || e.ref === step.docId).map((e) => Date.parse(e.at)).filter(Boolean);
+  if (!touches.length) return null;
+  const days = Math.floor((now.getTime() - Math.min(...touches)) / DAY);
+  return days >= 7 ? { step, days } : null;
+}
+
 function welcomeScene(state: JourneyState, opts: { firstVisit?: boolean; summoned?: boolean } = {}): Scene {
   const now = new Date();
   const name = firstName(state);
@@ -46,10 +64,14 @@ function welcomeScene(state: JourneyState, opts: { firstVisit?: boolean; summone
   else if (opts.firstVisit) lines.push(`Cześć${hi}! Tu ${ASSISTANT_NAME}, a dokładniej mój asystent AI.`, "Dobrze, że jesteś. Prowadzę Cię krok po kroku, a Ty zatwierdzasz efekty.");
   else if (away >= 3) {
     mood = "nudge";
-    lines.push(`Dobrze, że jesteś z powrotem${hi}.`, `Nie było Cię ${away} dni. Bez wyrzutów, ale marketing studia sam się nie zrobi. Dziś wystarczy 15 minut.`);
+    lines.push(...awayLines(away, hi));
   } else lines.push(`Cześć${hi}! Dobrze, że jesteś.`);
 
-  lines.push(move.line);
+  const stuck = opts.firstVisit ? null : stuckDays(state, now);
+  if (stuck) {
+    mood = "nudge";
+    lines.push(`Siedzisz nad krokiem „${stuck.step.title}” od ${stuck.days} dni. Co blokuje? Napisz mi wprost, rozbijemy to na mniejsze kawałki i dziś domkniemy.`);
+  } else lines.push(move.line);
   if (streak >= 2 && !activeToday) {
     mood = "nudge";
     lines.push(`Masz serię ${streak} dni. Jedno działanie dziś i jej nie tracisz.`);
@@ -152,7 +174,7 @@ function Stage({ scene, onClose }: { scene: Scene; onClose: () => void }) {
             <motion.span
               aria-hidden="true"
               className="absolute -inset-3 rounded-full opacity-60 blur-lg"
-              style={{ background: "conic-gradient(from 0deg, #dd9933, #16a37b, #f2c472, #007f5f, #dd9933)" }}
+              style={{ background: "conic-gradient(from 0deg, #72c41c, #ffffff, #dd9933, #1a7f2a, #72c41c)" }}
               animate={reduce ? undefined : { rotate: 360 }}
               transition={{ duration: 9, repeat: Infinity, ease: "linear" }}
             />
@@ -161,7 +183,7 @@ function Stage({ scene, onClose }: { scene: Scene; onClose: () => void }) {
             </motion.div>
             <motion.span
               aria-hidden="true"
-              className="absolute -right-3 top-1 grid size-12 place-items-center rounded-full bg-brand text-brand-ink shadow-[0_8px_24px_-6px_rgba(221,153,51,.8)]"
+              className="absolute -right-3 top-1 grid size-12 place-items-center rounded-full bg-brand text-brand-ink shadow-[0_8px_24px_-6px_rgba(114,196,28,.5)]"
               style={{ originX: 0.7, originY: 0.9 }}
               initial={{ scale: 0, rotate: -40 }}
               animate={reduce ? { scale: 1, rotate: 0 } : { scale: 1, rotate: scene.mood === "hello" ? [0, 22, -10, 22, -6, 0] : [0, -12, 12, 0] }}
@@ -178,7 +200,7 @@ function Stage({ scene, onClose }: { scene: Scene; onClose: () => void }) {
           exit={{ opacity: 0, y: 20, scale: 0.97 }}
           transition={{ type: "spring", stiffness: 260, damping: 24, delay: 0.08 }}
           className="glass-strong relative rounded-3xl px-6 pb-6 pt-14"
-          style={{ boxShadow: "0 0 0 1px rgba(221,153,51,.35), 0 30px 80px -30px rgba(0,0,0,.85), 0 0 70px -25px rgba(221,153,51,.45)" }}
+          style={{ boxShadow: "0 0 0 1px rgba(114,196,28,.35), 0 30px 80px -30px rgba(0,0,0,.85), 0 0 70px -25px rgba(114,196,28,.4)" }}
         >
           <button type="button" onClick={onClose} aria-label="Zamknij" className="absolute right-2 top-2 grid size-11 place-items-center rounded-xl text-white/60 hover:bg-white/10 hover:text-white">
             <X className="size-4" aria-hidden="true" />
@@ -211,7 +233,7 @@ function Stage({ scene, onClose }: { scene: Scene; onClose: () => void }) {
                 ref={ctaRef}
                 href={scene.cta.href}
                 onClick={onClose}
-                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-brand px-5 font-bold text-brand-ink shadow-[0_12px_30px_-12px_rgba(221,153,51,.9)] hover:brightness-110 sm:w-auto"
+                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-brand px-5 font-bold text-brand-ink shadow-[0_12px_30px_-12px_rgba(114,196,28,.55)] hover:brightness-110 sm:w-auto"
               >
                 {scene.cta.label}
                 <ArrowRight className="size-4" aria-hidden="true" />
@@ -243,6 +265,11 @@ export function AssistantHost() {
     if (!ready || !email) return;
     const today = dayKey(new Date());
     const last = localStorage.getItem(helloKey(email));
+    // Pierwsze wejście: zamiast tego powitania jest okienko z wideo i przewodnik po pulpicie (Onboarding.tsx).
+    if (!latest.current.onboarded && !latest.current.demo) {
+      localStorage.setItem(helloKey(email), today);
+      return;
+    }
     if (last !== today) {
       const t = setTimeout(() => {
         localStorage.setItem(helloKey(email), today);

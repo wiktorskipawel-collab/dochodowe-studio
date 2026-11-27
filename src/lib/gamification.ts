@@ -145,21 +145,21 @@ export function badges(state: JourneyState): Badge[] {
   const msgs = state.events.filter((e) => e.type === "msg").length;
   const list: Badge[] = [];
   const add = (id: string, title: string, desc: string, icon: string, earned: boolean) => list.push({ id, title, desc, icon, earned });
-  add("polaczony", "Połączony", "Podłączone AI", "plug", !!state.ai.mode);
-  add("pierwszy-krok", "Pierwszy krok", "Ankieta wypełniona", "flag", !!state.survey);
-  add("dna", "DNA odkryte", "Zatwierdzone DNA studia", "dna", approved("dna"));
-  add("klient", "Znam klienta", "Zatwierdzony awatar", "user", approved("awatar"));
-  add("oferta", "Oferta jak złoto", "Zatwierdzona oferta", "gem", approved("oferta"));
-  add("strateg", "Strateg", "Zatwierdzona strategia", "target", approved("strategia"));
-  add("start", "Gotowy do startu", "Lejek ma fundamenty", "rocket", approved("gotowosc"));
-  add("tworca", "Twórca treści", "Materiały gotowe", "pen", approved("materialy-lejka"));
-  add("analityk", "Analityk", "Pierwszy przegląd wyników", "chart", approved("wyniki"));
-  add("rozmowa", "W dialogu", "20 wiadomości z asystentem", "chat", msgs >= 20);
-  add("uczen", "Pilny uczeń", "5 obejrzanych lekcji", "book", lessons >= 5);
-  add("seria3", "Seria 3 dni", "3 dni z rzędu w akcji", "flame", streak >= 3);
-  add("seria7", "Seria 7 dni", "Tydzień bez przerwy", "flame", streak >= 7);
-  add("polowa", "Połowa drogi", "50% ścieżki", "half", pct >= 50);
-  add("meta", "Meta", "Cała ścieżka zatwierdzona", "trophy", pct >= 100);
+  // Nazwy bez rodzaju gramatycznego: platforma pisze do właścicielek i właścicieli. DO ZATWIERDZENIA: nazwy i progi (Bartek).
+  add("start", "Start", "Ankieta za Tobą", "flag", !!state.survey);
+  add("dna", "DNA studia", "Zatwierdzone DNA studia", "dna", approved("dna"));
+  add("klient", "Klient jak na dłoni", "Zatwierdzony awatar klienta", "user", approved("awatar"));
+  add("oferta", "Oferta, która sprzedaje", "Zatwierdzona oferta", "gem", approved("oferta"));
+  add("plan-gry", "Plan gry", "Zatwierdzona strategia", "target", approved("strategia"));
+  add("zielone-swiatlo", "Zielone światło", "Lejek ma fundamenty", "rocket", approved("gotowosc"));
+  add("tresci", "Treści gotowe", "Materiały lejka zatwierdzone", "pen", approved("materialy-lejka"));
+  add("liczby", "Liczby mówią", "Pierwszy przegląd wyników", "chart", approved("wyniki"));
+  add("rozmowa", "Rozmowa w toku", "20 wiadomości z asystentem", "chat", msgs >= 20);
+  add("wiedza", "Wiedza w praktyce", "5 zaliczonych lekcji", "book", lessons >= 5);
+  add("seria3", "3 dni w ruchu", "3 dni z rzędu w akcji", "flame", streak >= 3);
+  add("seria7", "Tydzień w ruchu", "7 dni bez przerwy", "flame", streak >= 7);
+  add("polmetek", "Półmetek", "50% ścieżki", "half", pct >= 50);
+  add("meta", "Cała ścieżka", "Wszystkie kroki zatwierdzone", "trophy", pct >= 100);
   return list;
 }
 

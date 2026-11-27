@@ -24,6 +24,7 @@ function titleFor(path: string) {
   if (path.startsWith("/narzedzia/")) return "Narzędzie AI";
   if (path.startsWith("/narzedzia")) return "Narzędzia AI";
   if (path.startsWith("/lokal")) return "Lokal i otwarcie";
+  if (path.startsWith("/ustawienia")) return "Ustawienia konta";
   const step = STEPS.find((s) => path === `/krok/${s.id}`);
   return step ? `Krok ${step.no}: ${step.title}` : "Marketing OS";
 }

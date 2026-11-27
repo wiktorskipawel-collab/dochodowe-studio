@@ -206,10 +206,10 @@ function LessonGate({ lessons, watched, onDone }: { lessons: Lesson[]; watched: 
         <div className="grid aspect-video w-full place-items-center rounded-xl border border-dashed border-white/20 bg-black/30 p-4 text-center">
           <span className="flex flex-col items-center gap-3 text-sm text-white/70">
             <ExternalLink className="size-9 text-white/40" aria-hidden="true" />
-            {l.skool ? "Ta lekcja nie ma nagrania. Treść i materiały są na Skool." : "Tu pojawi się wideo, gdy przeniesiemy kurs do odtwarzacza platformy."}
+            {l.skool ? "Ta lekcja nie ma nagrania. Otwórz jej materiały." : "Tu pojawi się wideo, gdy przeniesiemy kurs do odtwarzacza platformy."}
             {l.skool ? (
               <a href={l.skool} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-white px-4 font-semibold text-neutral-950 hover:bg-white/90">
-                Otwórz na Skool<ExternalLink className="size-4" aria-hidden="true" /><span className="sr-only"> (w nowej karcie)</span>
+                Otwórz materiały<ExternalLink className="size-4" aria-hidden="true" /><span className="sr-only"> (w nowej karcie)</span>
               </a>
             ) : null}
           </span>
@@ -221,10 +221,10 @@ function LessonGate({ lessons, watched, onDone }: { lessons: Lesson[]; watched: 
           {watched[l.id] ? <span className="ml-2 text-emerald-300">zaliczona</span> : null}
         </p>
         {l.opis ? <p className="text-sm text-white/70">{l.opis}</p> : null}
-        {l.attachments?.length ? <p className="text-xs text-white/55">Materiały na Skool: {l.attachments.join(", ")}</p> : null}
+        {l.attachments?.length ? <p className="text-xs text-white/55">Materiały do lekcji: {l.attachments.join(", ")}</p> : null}
         {l.skool && l.video ? (
           <a href={l.skool} target="_blank" rel="noopener noreferrer" className="inline-flex w-fit items-center gap-1.5 text-xs font-semibold text-white/60 hover:text-white">
-            Otwórz na Skool<ExternalLink className="size-3.5" aria-hidden="true" /><span className="sr-only"> (w nowej karcie)</span>
+            Otwórz materiały<ExternalLink className="size-3.5" aria-hidden="true" /><span className="sr-only"> (w nowej karcie)</span>
           </a>
         ) : null}
       </div>
@@ -238,7 +238,7 @@ function LessonGate({ lessons, watched, onDone }: { lessons: Lesson[]; watched: 
                   {watched[x.id] ? <Check className="size-3.5" aria-hidden="true" /> : i + 1}
                 </span>
                 <span className="min-w-0 flex-1 truncate font-medium">{x.title}</span>
-                <span className="shrink-0 text-xs text-white/50">{x.video ? "wideo" : "Skool"}</span>
+                <span className="shrink-0 text-xs text-white/50">{x.video ? "wideo" : "materiały"}</span>
               </button>
             </li>
           ))}

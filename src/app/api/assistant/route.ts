@@ -4,7 +4,7 @@
 // obrazu, data_collection: deny) i nie są nigdzie zapisywane ani logowane. Przeglądarka zapisuje w historii sam tekst.
 import { AiError, LIMITS, MEDIA_RULES, resolveKey, streamAssistant, type ChatMessage } from "@/lib/ai";
 import { CHAT_LIMITS, MEDIA_LIMITS, VISION_MODEL, isAllowedModel, platformAi, type Provider } from "@/lib/models";
-import { signedIn } from "@/lib/supabase/server";
+import { aiAccess, recordUsage } from "@/lib/usage";
 import { buildSystem, buildToolSystem } from "@/lib/assistant";
 import { findTool } from "@/lib/tools";
 
@@ -130,8 +130,13 @@ export async function POST(request: Request) {
       ? plain("Asystent jest chwilowo niedostępny. Spróbuj ponownie za kilka minut.", 503)
       : plain("Twoje AI nie jest połączone. Wejdź w „Połącz AI” i zaloguj się.", 401);
   }
-  // Za AI platformy płacimy my: rozmawiać mogą tylko zalogowani uczestnicy.
-  if (platform && !(await signedIn())) return plain("Zaloguj się, żeby rozmawiać z asystentem.", 401);
+  // Za AI platformy płacimy my: rozmawiać mogą tylko zalogowani uczestnicy, w ramach miesięcznego limitu tokenów
+  // (src/lib/usage.ts; bez tabeli ai_usage w bazie — bez limitu, jak dawniej).
+  const access = platform ? await aiAccess() : null;
+  if (access && !access.ok) {
+    return access.reason === "limit" ? plain(access.message, 429) : plain("Zaloguj się, żeby rozmawiać z asystentem.", 401);
+  }
+  const usage = access?.ok ? recordUsage(access.addUsage) : null;
 
   try {
     const stream = await streamAssistant({
@@ -142,9 +147,11 @@ export async function POST(request: Request) {
       dynamicSystem: `${system.dynamicText}\n\n${MEDIA_RULES}`,
       messages,
       cacheKey: tool ? `marketing-os-tool-${tool.id}` : `marketing-os-${stepId}-${mode}`,
+      onUsage: usage?.report,
     });
     return new Response(stream, { headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } });
   } catch (err) {
+    usage?.cancel();
     if (err instanceof AiError) return plain(err.message, err.status);
     return plain("Coś poszło nie tak po stronie serwera. Spróbuj jeszcze raz.", 500);
   }

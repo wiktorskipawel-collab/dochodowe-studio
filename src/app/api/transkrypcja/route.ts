@@ -4,7 +4,7 @@
 // Nic nie zapisujemy na dysku, w bazie ani w logach (żadnego console.log z treścią).
 import { AiError, resolveKey, streamTranscription, type TranscriptKind } from "@/lib/ai";
 import { AUDIO_MODEL, MEDIA_LIMITS, audioFormat, platformAi } from "@/lib/models";
-import { signedIn } from "@/lib/supabase/server";
+import { aiAccess, recordUsage } from "@/lib/usage";
 
 // Dłuższe nagranie to dłuższe spisywanie (Gemini oddaje tekst strumieniem).
 export const maxDuration = 120;
@@ -59,12 +59,18 @@ export async function POST(request: Request) {
       ? plain("Asystent jest chwilowo niedostępny. Spróbuj ponownie za kilka minut.", 503)
       : plain("Twoje AI nie jest połączone. Wejdź w „Połącz AI” i zaloguj się.", 401);
   }
-  if (platform && !(await signedIn())) return plain("Zaloguj się, żeby rozmawiać z asystentem.", 401);
+  // Ten sam miesięczny limit tokenów co rozmowy (src/lib/usage.ts).
+  const access = platform ? await aiAccess() : null;
+  if (access && !access.ok) {
+    return access.reason === "limit" ? plain(access.message, 429) : plain("Zaloguj się, żeby rozmawiać z asystentem.", 401);
+  }
+  const usage = access?.ok ? recordUsage(access.addUsage) : null;
 
   try {
-    const stream = await streamTranscription({ apiKey, model: AUDIO_MODEL, audio: Buffer.from(bytes).toString("base64"), format, kind });
+    const stream = await streamTranscription({ apiKey, model: AUDIO_MODEL, audio: Buffer.from(bytes).toString("base64"), format, kind, onUsage: usage?.report });
     return new Response(stream, { headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } });
   } catch (err) {
+    usage?.cancel();
     if (err instanceof AiError) return plain(err.message, err.status);
     return plain("Coś poszło nie tak po stronie serwera. Spróbuj jeszcze raz.", 500);
   }

@@ -112,7 +112,7 @@ export function Milestones({ state }: { state: JourneyState }) {
         <div className="max-w-2xl">
           <h2 id="kamienie-h" className="text-lg font-bold">Kamienie milowe</h2>
           <p className="text-sm text-white/70">
-            8 modułów kursu „Dochodowe Studio” ze Skool. Kamień zdobywasz, gdy zatwierdzisz kroki ścieżki i obejrzysz lekcje modułu.
+            8 modułów kursu „Dochodowe Studio”. Kamień zdobywasz, gdy zatwierdzisz kroki ścieżki i obejrzysz lekcje modułu.
             Za kamienie 2, 4 i 6 odblokujesz 30 minut rozmowy z Bartkiem na żywo.
           </p>
         </div>
@@ -136,7 +136,7 @@ export function Milestones({ state }: { state: JourneyState }) {
       <details className="text-sm text-white/75">
         <summary className="cursor-pointer select-none text-xs font-semibold text-white/60 hover:text-white">Pokaż dane w tabeli</summary>
         <div className="mt-2 overflow-x-auto">
-          <DataTable head={["Kamień (moduł Skool)", "Kroki", "Lekcje", "Zadania", "Nagroda", "Stan"]}
+          <DataTable head={["Kamień (moduł kursu)", "Kroki", "Lekcje", "Zadania", "Nagroda", "Stan"]}
             rows={list.map((m) => [`${m.no}. ${m.title}`, m.stepsTotal ? `${m.stepsDone}/${m.stepsTotal}` : "—", `${m.lessonsDone}/${m.lessonsTotal}`, `${m.done}/${m.total}`, m.call ? "30 min z Bartkiem" : "flaga na szlaku", stateLabel(m)])} />
         </div>
       </details>
@@ -355,7 +355,7 @@ function Panel({ m }: { m: MilestoneProgress }) {
         <div className="flex items-start gap-3">
           <span className={`grid size-12 shrink-0 place-items-center rounded-2xl ${m.complete ? "bg-brand text-brand-ink" : "bg-white/10 text-white"}`}><Icon className="size-6" aria-hidden="true" /></span>
           <div className="min-w-0">
-            <p className="text-xs font-semibold text-white/60">Kamień {m.no} z 8 · moduł „{m.no}. {m.title}” na Skool</p>
+            <p className="text-xs font-semibold text-white/60">Kamień {m.no} z 8 · moduł „{m.no}. {m.title}”</p>
             <h3 className="text-lg font-extrabold leading-tight">{m.title}</h3>
           </div>
         </div>

@@ -119,7 +119,7 @@ const okladkaZ = (list: KursItem[]) => {
 
 const ZAKLADKI: [Widok, string, string, LucideIcon][] = [
   ["sciezka", "Twoja ścieżka", `${lekcji(allLessons().length)} do kroków, z XP`, Route],
-  ["kursy", "Kursy", `${kursow(KURSY.length)} jak na Skool, ${lekcji(WSZYSTKIE_LEKCJE.length)}`, Library],
+  ["kursy", "Kursy", `Cały program: ${kursow(KURSY.length)}, ${lekcji(WSZYSTKIE_LEKCJE.length)}`, Library],
 ];
 
 /** /lekcje = ścieżka, /lekcje#kursy = kursy, /lekcje#zespol (stary adres) = kurs „Przedsiębiorczy Trener”. Inne kotwice: bez zmian. */
@@ -225,7 +225,7 @@ function SkoolLink({ href, strong }: { href: string; strong?: boolean }) {
   return (
     <a href={href} target="_blank" rel="noopener noreferrer"
       className={`inline-flex min-h-12 items-center gap-2 rounded-2xl px-5 font-semibold ${strong ? "bg-white text-neutral-950 hover:bg-white/90" : "border border-white/20 hover:bg-white/10"}`}>
-      Otwórz na Skool<ExternalLink className="size-4" aria-hidden="true" /><span className="sr-only"> (w nowej karcie)</span>
+      Otwórz materiały<ExternalLink className="size-4" aria-hidden="true" /><span className="sr-only"> (w nowej karcie)</span>
     </a>
   );
 }
@@ -233,7 +233,7 @@ function SkoolLink({ href, strong }: { href: string; strong?: boolean }) {
 function Zalaczniki({ list }: { list: string[] }) {
   return (
     <div className="flex max-w-3xl flex-wrap items-center gap-2 text-sm">
-      <span className="inline-flex items-center gap-1.5 font-semibold text-white/70"><Paperclip className="size-4" aria-hidden="true" />Materiały na Skool:</span>
+      <span className="inline-flex items-center gap-1.5 font-semibold text-white/70"><Paperclip className="size-4" aria-hidden="true" />Materiały do lekcji:</span>
       {list.map((a) => <span key={a} className="rounded-full border border-white/15 px-2.5 py-0.5 text-white/75">{a}</span>)}
     </div>
   );
@@ -312,7 +312,7 @@ function Okladka({ src, duration, video, done, xp, label, badge, big, eager, fal
       {duration ? (
         <span className="absolute bottom-3 right-3 rounded-md bg-black/75 px-1.5 py-0.5 text-xs font-bold tabular-nums text-white"><span className="sr-only">Czas nagrania: </span>{czas(duration)}</span>
       ) : !video ? (
-        <span className="absolute bottom-3 right-3 rounded-md bg-white/90 px-1.5 py-0.5 text-[11px] font-extrabold text-neutral-950">Na Skool</span>
+        <span className="absolute bottom-3 right-3 rounded-md bg-white/90 px-1.5 py-0.5 text-[11px] font-extrabold text-neutral-950">Materiały</span>
       ) : null}
       <span className="absolute inset-x-0 bottom-0 h-1 bg-white/10"><span className={`block h-full ${done ? "w-full bg-brand" : "w-0"}`} /></span>
       {locked ? (
@@ -498,7 +498,7 @@ function Odtwarzacz({ id, flipId, title, eyebrow, sub, video, thumb: miniaturaFi
           ) : (
             <div className="relative">
               {poster}
-              <span className="absolute inset-x-0 bottom-5 px-4 text-center text-sm text-white/85">{skool ? "Ta lekcja nie ma nagrania. Treść i materiały są na Skool." : "Nagranie w przygotowaniu."}</span>
+              <span className="absolute inset-x-0 bottom-5 px-4 text-center text-sm text-white/85">{skool ? "Ta lekcja nie ma nagrania — otwórz materiały." : "Nagranie w przygotowaniu."}</span>
             </div>
           )}
         </div>
@@ -563,7 +563,7 @@ function SciezkaLekcje() {
     const step = STEPS.find((s) => s.lessons.some((l) => l.id === lesson.id)) ?? STEPS[0];
     const status: Status = state.watched[lesson.id] ? "done" : statuses[step.id] === "locked" ? "locked" : "open";
     const k = lesson.ref ? ITEM.get(lesson.ref) : undefined;
-    const gdzie = k ? `${k.kurs.title} · ${k.modul.title}` : lesson.source.replace(/^Skool · /, "");
+    const gdzie = k ? `${k.kurs.title} · ${k.modul.title}` : lesson.source.replace(/^Skool · /, "") /* starszy zapis źródła */;
     return { lesson, no: i + 1, step, phase: PHASES.indexOf(step.phase), status, ...wideoLekcji(lesson), gdzie };
   });
   const count = (f: Filter) => items.filter((it) => match(it, f)).length;
@@ -583,7 +583,7 @@ function SciezkaLekcje() {
       <section data-hero className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)]">
         <div className="glass-card flex flex-col justify-between gap-6 rounded-3xl p-6 md:p-8">
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-brand">Lekcje Bartka</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-brand">Twoje lekcje</p>
             <h2 className="mt-2 text-3xl font-extrabold leading-tight md:text-4xl">Jedna lekcja dziennie.<br /><span className="text-white/60">Tyle wystarczy.</span></h2>
           </div>
           <div className="flex items-center gap-5">
@@ -653,7 +653,7 @@ function SciezkaLekcje() {
       {count(filter) === 0 ? <p className="text-white/60">Nic tu jeszcze nie ma.</p> : null}
 
       <a href="#kursy" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} className="flex w-fit items-center gap-2 text-sm text-white/60 hover:text-white">
-        <Library className="size-4" aria-hidden="true" />Wszystkie kursy Bartka ({lekcji(WSZYSTKIE_LEKCJE.length)}, kolejność jak na Skool) w zakładce „Kursy”<ArrowRight className="size-4" aria-hidden="true" />
+        <Library className="size-4" aria-hidden="true" />Cały program: {lekcji(WSZYSTKIE_LEKCJE.length)} z {kursow(KURSY.length)} w zakładce „Kursy”<ArrowRight className="size-4" aria-hidden="true" />
       </a>
 
       {current
@@ -820,11 +820,11 @@ function ListaKursow({ zaliczone, nastepna, open, onKurs, onLekcja }: Omit<Poste
       <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)]">
         <div data-wjazd className="glass-card flex flex-col justify-between gap-6 rounded-3xl p-6 md:p-8">
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-brand">Kursy Bartka</p>
-            <h2 className="mt-2 text-3xl font-extrabold leading-tight md:text-4xl">Cały program.<br /><span className="text-white/60">Tak jak na Skool.</span></h2>
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-brand">Kursy</p>
+            <h2 className="mt-2 text-3xl font-extrabold leading-tight md:text-4xl">Cały program.<br /><span className="text-white/60">Krok po kroku.</span></h2>
             <p className="mt-3 max-w-md text-sm leading-relaxed text-white/65">
               Na początku studio często prowadzi się w pojedynkę, potem przychodzi czas na szkolenie trenerów i zespół.
-              Dlatego kursy, moduły i lekcje są tu w tej samej kolejności co na Skool.
+              Dlatego kursy, moduły i lekcje idą po kolei: od pierwszego kroku aż po własny zespół.
             </p>
           </div>
           <div className="flex items-center gap-5">
@@ -867,7 +867,7 @@ function ListaKursow({ zaliczone, nastepna, open, onKurs, onLekcja }: Omit<Poste
       </section>
 
       <section aria-labelledby="kursy-h" className="flex flex-col gap-4">
-        <h2 id="kursy-h" data-wjazd className="text-xl font-extrabold">{kursow(KURSY.length)} <span className="font-semibold text-white/50">· kolejność jak na Skool</span></h2>
+        <h2 id="kursy-h" data-wjazd className="text-xl font-extrabold">Wszystkie kursy <span className="font-semibold text-white/50">· {kursow(KURSY.length)}, po kolei</span></h2>
         <ol className="grid gap-5 md:grid-cols-2">
           {KURSY.map((kurs, i) => {
             const list = KURS_ITEMS[kurs.id];
@@ -962,7 +962,7 @@ function WidokKursu({ kurs, modul, watched, zaliczone, nastepna, open, go, onLek
       {!modul ? (
         /* POZIOM 2: moduły kursu po kolei */
         <section aria-labelledby="moduly-h" className="flex flex-col gap-4">
-          <h3 id="moduly-h" data-wjazd className="text-xl font-extrabold">Moduły <span className="font-semibold text-white/50">· {modulow(kurs.modules.length)}, kolejność jak na Skool</span></h3>
+          <h3 id="moduly-h" data-wjazd className="text-xl font-extrabold">Moduły <span className="font-semibold text-white/50">· {modulow(kurs.modules.length)}, po kolei</span></h3>
           <ol className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
             {kurs.modules.map((mod, i) => {
               const lekcje = lekcjeModulu(kurs, mod);

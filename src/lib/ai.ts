@@ -21,6 +21,47 @@ export const MEDIA_RULES = `# Zdjęcia, nagrania i transkrypcje
 - Nie przepisujesz ze zrzutów ani z transkrypcji numerów telefonów, adresów e-mail, nazwisk ani informacji o zdrowiu.
 - Wpis „[Dołączone zdjęcia: N…]” w starszej wiadomości oznacza zdjęcia, których już nie widzisz (nie są zapisywane). Nie zgadujesz ich treści: opierasz się na tym, co już padło w rozmowie.`;
 
+/** Zużycie tokenów jednej odpowiedzi AI → licznik miesięczny (src/lib/usage.ts). Wołane raz, na końcu odpowiedzi. */
+export type UsageReport = (tokens: number) => void;
+
+// Szacunek, gdy dostawca nie poda zużycia (np. przerwany strumień): ok. 3,5 znaku na token (polski tekst),
+// zdjęcie ok. 1000 tokenów, nagranie ok. 32 tokeny na sekundę (przy ok. 50 kbit/s to 1 token na ~200 bajtów).
+const CHARS_PER_TOKEN = 3.5;
+const IMAGE_TOKENS = 1_000;
+const AUDIO_BYTES_PER_TOKEN = 200;
+
+type ProviderUsage = { total_tokens?: number | null; prompt_tokens?: number | null; completion_tokens?: number | null } | null | undefined;
+
+/** Liczy tokeny jednej odpowiedzi: realne z `usage` dostawcy, a gdy go brak — szacunek ze znaków wejścia i wyjścia. */
+function usageMeter(onUsage: UsageReport | undefined, inputChars: number, extraTokens = 0) {
+  let real = 0;
+  let outChars = 0;
+  let sent = false;
+  return {
+    usage(u: ProviderUsage) {
+      const total = Number(u?.total_tokens ?? 0) || Number(u?.prompt_tokens ?? 0) + Number(u?.completion_tokens ?? 0);
+      if (total > 0) real = total;
+    },
+    text(s: string) {
+      outChars += s.length;
+    },
+    done() {
+      if (sent || !onUsage) return;
+      sent = true;
+      const tokens = real || Math.ceil((inputChars + outChars) / CHARS_PER_TOKEN) + extraTokens;
+      try {
+        onUsage(tokens);
+      } catch {
+        // licznik nie może zepsuć odpowiedzi
+      }
+    },
+  };
+}
+type UsageMeter = ReturnType<typeof usageMeter>;
+
+const chars = (system: string, messages: ChatMessage[]) => messages.reduce((n, m) => n + m.content.length, system.length);
+const imageCount = (messages: ChatMessage[]) => messages.reduce((n, m) => n + (m.images?.length ?? 0), 0);
+
 export class AiError extends Error {
   constructor(public status: number, message: string) {
     super(message);
@@ -47,6 +88,7 @@ export async function streamAssistant(opts: {
   dynamicSystem: string; // kontekst uczestnika: etap, zatwierdzone dokumenty
   messages: ChatMessage[];
   cacheKey: string;
+  onUsage?: UsageReport; // zużycie tokenów po zakończeniu odpowiedzi (licznik miesięczny)
 }): Promise<ReadableStream<Uint8Array>> {
   if (opts.provider === "openrouter") return streamOpenRouter(opts);
   return opts.provider === "openai" ? streamOpenAI(opts) : streamClaude(opts);
@@ -55,19 +97,34 @@ export async function streamAssistant(opts: {
 const openRouter = (apiKey: string) =>
   new OpenAI({ apiKey, baseURL: "https://openrouter.ai/api/v1", defaultHeaders: { "X-Title": "Marketing OS · Dochodowe Studio" } });
 
-/** Strumień OpenRouter (chat completions) → strumień samego tekstu dla przeglądarki. */
-function textStream(stream: AsyncIterable<{ choices: { delta?: { content?: string | null } }[] }>) {
+/** Strumień OpenRouter (chat completions) → strumień samego tekstu dla przeglądarki.
+ *  OpenRouter zawsze dołącza `usage` (tokeny) w ostatnim fragmencie strumienia (dokumentacja „Usage Accounting”,
+ *  sprawdzone 2026-11-27: parametry `usage: { include: true }` i `stream_options` są przestarzałe i nic nie zmieniają). */
+function textStream(stream: AsyncIterable<{ choices: { delta?: { content?: string | null } }[]; usage?: ProviderUsage }>, meter: UsageMeter) {
   return new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
         for await (const chunk of stream) {
+          if (chunk.usage) meter.usage(chunk.usage);
           const text = chunk.choices[0]?.delta?.content;
-          if (text) controller.enqueue(encoder.encode(text));
+          if (text) {
+            meter.text(text);
+            controller.enqueue(encoder.encode(text));
+          }
         }
       } catch {
-        controller.enqueue(encoder.encode("\n\n[Połączenie z AI zostało przerwane. Spróbuj jeszcze raz.]"));
+        try {
+          controller.enqueue(encoder.encode("\n\n[Połączenie z AI zostało przerwane. Spróbuj jeszcze raz.]"));
+        } catch {
+          // przeglądarka już się rozłączyła
+        }
       } finally {
-        controller.close();
+        meter.done();
+        try {
+          controller.close();
+        } catch {
+          // strumień już zamknięty (np. przerwany przez przeglądarkę)
+        }
       }
     },
   });
@@ -103,7 +160,8 @@ async function streamOpenRouter(opts: Parameters<typeof streamAssistant>[0]) {
       // Modele Gemini domyślnie „myślą”: niski poziom wystarcza do odczytania zrzutu, a jest szybszy i tańszy.
       ...(vision ? { reasoning: { effort: "low" } } : {}),
     };
-    return textStream(await client.chat.completions.create(params));
+    const meter = usageMeter(opts.onUsage, chars(`${opts.staticSystem}\n\n${opts.dynamicSystem}`, opts.messages), imageCount(opts.messages) * IMAGE_TOKENS);
+    return textStream(await client.chat.completions.create(params), meter);
   } catch (err) {
     if (err instanceof OpenAIError) {
       if (err.status === 401) throw new AiError(401, "Połączenie z AI wygasło albo zostało cofnięte. Połącz się ponownie w „Połącz AI”.");
@@ -135,7 +193,7 @@ const TRANSCRIBE: Record<TranscriptKind, string> = {
 };
 
 /** Nagranie (base64) → strumień tekstu. Plik nie jest nigdzie zapisywany: trafia tylko do OpenRouter (data_collection: deny). */
-export async function streamTranscription(opts: { apiKey: string; model: string; audio: string; format: string; kind: TranscriptKind }) {
+export async function streamTranscription(opts: { apiKey: string; model: string; audio: string; format: string; kind: TranscriptKind; onUsage?: UsageReport }) {
   const client = openRouter(opts.apiKey);
   try {
     // Część `input_audio` (chat completions OpenRouter): surowy base64 + format. Typy SDK znają tylko „wav” i „mp3”,
@@ -157,7 +215,9 @@ export async function streamTranscription(opts: { apiKey: string; model: string;
       provider: { data_collection: "deny" },
       reasoning: { effort: "low" },
     };
-    return textStream(await client.chat.completions.create(params));
+    const audioTokens = Math.ceil((opts.audio.length * 3) / 4 / AUDIO_BYTES_PER_TOKEN); // base64 → bajty → tokeny
+    const meter = usageMeter(opts.onUsage, TRANSCRIBE[opts.kind].length, audioTokens);
+    return textStream(await client.chat.completions.create(params), meter);
   } catch (err) {
     if (err instanceof OpenAIError) {
       if (err.status === 402) throw new AiError(402, "Skończyły się środki albo limit klucza AI. Konto OpenRouter trzeba doładować.");
@@ -182,20 +242,33 @@ async function streamOpenAI(opts: Parameters<typeof streamAssistant>[0]) {
       store: false,
       stream: true,
     });
+    const meter = usageMeter(opts.onUsage, chars(`${opts.staticSystem}\n\n${opts.dynamicSystem}`, opts.messages));
     return new ReadableStream<Uint8Array>({
       async start(controller) {
         try {
           for await (const event of stream) {
-            if (event.type === "response.output_text.delta") controller.enqueue(encoder.encode(event.delta));
+            if (event.type === "response.output_text.delta") {
+              meter.text(event.delta);
+              controller.enqueue(encoder.encode(event.delta));
+            } else if (event.type === "response.completed") meter.usage({ total_tokens: event.response.usage?.total_tokens });
             else if (event.type === "response.failed" || event.type === "error") {
               controller.enqueue(encoder.encode("\n\n[Przerwano odpowiedź. Spróbuj jeszcze raz.]"));
               break;
             }
           }
         } catch {
-          controller.enqueue(encoder.encode("\n\n[Połączenie z AI zostało przerwane. Spróbuj jeszcze raz.]"));
+          try {
+            controller.enqueue(encoder.encode("\n\n[Połączenie z AI zostało przerwane. Spróbuj jeszcze raz.]"));
+          } catch {
+            // przeglądarka już się rozłączyła
+          }
         } finally {
-          controller.close();
+          meter.done();
+          try {
+            controller.close();
+          } catch {
+            // strumień już zamknięty
+          }
         }
       },
     });
@@ -239,11 +312,13 @@ async function streamClaude(opts: Parameters<typeof streamAssistant>[0]) {
     throw new AiError(502, "Nie udało się połączyć z Claude. Spróbuj jeszcze raz za chwilę.");
   }
 
+  const meter = usageMeter(opts.onUsage, chars(`${opts.staticSystem}\n\n${opts.dynamicSystem}`, opts.messages));
   return new ReadableStream<Uint8Array>({
     async start(controller) {
       const handle = (event: unknown) => {
         const e = event as { type?: string; delta?: { type?: string; text?: string } };
         if (e.type === "content_block_delta" && e.delta?.type === "text_delta" && e.delta.text) {
+          meter.text(e.delta.text);
           controller.enqueue(encoder.encode(e.delta.text));
         }
       };
@@ -255,15 +330,26 @@ async function streamClaude(opts: Parameters<typeof streamAssistant>[0]) {
           handle(next.value);
         }
         const final = await stream.finalMessage();
+        const u = final.usage;
+        meter.usage({ total_tokens: (u.input_tokens ?? 0) + (u.output_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0) + (u.cache_read_input_tokens ?? 0) });
         if (final.stop_reason === "refusal") {
           controller.enqueue(encoder.encode("\n\n[Asystent nie może pomóc w tej sprawie. Zadaj pytanie inaczej albo wróć do zadania z tego kroku.]"));
         } else if (final.stop_reason === "max_tokens") {
           controller.enqueue(encoder.encode("\n\n[Odpowiedź była za długa i została ucięta. Poproś o krótszą wersję.]"));
         }
       } catch {
-        controller.enqueue(encoder.encode("\n\n[Połączenie z Claude zostało przerwane. Spróbuj jeszcze raz.]"));
+        try {
+          controller.enqueue(encoder.encode("\n\n[Połączenie z Claude zostało przerwane. Spróbuj jeszcze raz.]"));
+        } catch {
+          // przeglądarka już się rozłączyła
+        }
       } finally {
-        controller.close();
+        meter.done();
+        try {
+          controller.close();
+        } catch {
+          // strumień już zamknięty
+        }
       }
     },
   });

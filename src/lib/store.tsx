@@ -104,6 +104,7 @@ type Ctx = {
   reset: () => void;
   loadDemo: () => void;
   signIn: (profile: { name: string; email: string }) => void;
+  setProfileName: (name: string) => void; // /ustawienia: imię po zapisie w Supabase (user_metadata.full_name)
   signOut: () => void;
 };
 
@@ -290,6 +291,7 @@ export function JourneyProvider({ children }: { children: ReactNode }) {
       },
       // Nowa osoba albo wyjście z demo = czysta ścieżka, żeby zawsze przeszła wejście (Połącz AI → ankieta).
       signIn: (profile) => setState((cur) => (cur.demo || !cur.profile || cur.profile.email !== profile.email ? { ...EMPTY, profile } : { ...cur, profile })),
+      setProfileName: (name) => setState((cur) => (cur.profile ? { ...cur, profile: { ...cur.profile, name } } : cur)),
       signOut: () => {
         forgetHello(s.profile?.email, "out");
         userId.current = null;

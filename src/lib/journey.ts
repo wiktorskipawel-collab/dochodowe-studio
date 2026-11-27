@@ -1584,7 +1584,7 @@ Zgody na wizerunek osób w materiałach:`,
         "DM: otwieracz relacyjny, nie sprzedażowy; 2–3 follow-upy; wiadomość powitalną testujemy na ok. 50 kontaktach na wariant; w rozmowie zawsze wysyłamy wywiad z klientem. Wiadomości automatu i pierwszego kontaktu bierzesz z dokumentu „Twój system obsługi zgłoszeń”.",
         "Organic: nie zapraszamy w każdej publikacji. Punkt wyjścia DS: proporcje miesiąca 4 edukacyjne, 3 historie i dowody, 3 humor i charakter, 2 sprzedażowe; relacje od poniedziałku do piątku (do potwierdzenia z Bartkiem: ile regularnych publikacji jest potrzebnych).",
         "Dobre audio jest ważniejsze niż obraz. Lead magnet to doświadczenie na żywo (pierwsze spotkanie w studiu), nie PDF.",
-        "Skryptów i wzorów ze Skool nie kopiujemy 1:1: łączymy awatar, ofertę i mechanizm skryptu.",
+        "Gotowych skryptów i wzorów z kursu nie kopiujemy 1:1: łączymy awatar, ofertę i mechanizm skryptu.",
         "Kreacje i format (propozycja do zatwierdzenia): na start 4–8 naprawdę różnych kreacji (inna osoba × inny problem × inny format); hak w pierwszych 3 s; rolki 30–90 s; etykieta AI przy realistycznych treściach z AI; próbne rolki do testowania haków.",
       ],
       sytuacje: [

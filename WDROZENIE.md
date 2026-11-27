@@ -11,6 +11,7 @@ Klucze i hasła wklejasz tylko w panelach Supabase/Vercel i w pliku `.env.local`
 2. **SQL Editor** → **New query** → wklej całą zawartość pliku `supabase/migrations/0001_journeys.sql` → **Run**.
    Powstaje tabela `journeys`, w której każdy uczestnik widzi tylko swój postęp.
    Potem tak samo plik `supabase/migrations/0002_journeys_grants.sql` (nowe projekty Supabase nie udostępniają tabel automatycznie).
+   Na koniec plik `supabase/migrations/0003_ai_usage.sql` (**Supabase → SQL Editor → New query → wklej cały plik → Run**): licznik tokenów AI i miesięczny limit asystenta (tabela `ai_usage`, każdy widzi tylko swoje zużycie i nie może go zmienić). Bez tego pliku asystent działa, ale bez limitu, a w „Ustawieniach konta” widać „Licznik ruszy po konfiguracji bazy”. Plik można uruchomić ponownie, nic się nie zduplikuje.
 3. **Project Settings → API Keys**: skopiuj **Project URL** i **Publishable key** do `.env.local`:
    ```
    NEXT_PUBLIC_SUPABASE_URL=...
@@ -41,6 +42,7 @@ Od tej chwili przycisk „Kontynuuj z Google” otwiera wybór konta Google i wr
    - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
    - `COOKIE_SECRET` (skopiuj z `.env.local`, min. 32 znaki)
    - `OPENROUTER_API_KEY` (klucz platformy z openrouter.ai, z limitem wydatków) i `NEXT_PUBLIC_AI_MODEL` (np. `deepseek/deepseek-v3.2`) — asystent działa wtedy na koszt platformy, uczestnik niczego nie łączy
+   - opcjonalnie `AI_MONTHLY_TOKEN_LIMIT` — miesięczny limit tokenów AI na jedną osobę (puste = 2 000 000; DO ZATWIERDZENIA). Liczą się rozmowy w krokach, narzędzia AI, zdjęcia, transkrypcje i lokal z ogłoszenia. Po przekroczeniu asystent odpowiada „Wykorzystano miesięczny limit asystenta. Odnowi się 1 …” aż do 1. dnia następnego miesiąca (czas polski). Zużycie widać w aplikacji: menu konta → **Ustawienia konta**, a wszystkich osób: Supabase → **Table Editor → ai_usage**. Działa po uruchomieniu `0003_ai_usage.sql` (krok 1.2).
    - opcjonalnie `NEXT_PUBLIC_AI_VISION_MODEL` (zdjęcia w czacie) i `NEXT_PUBLIC_AI_AUDIO_MODEL` (transkrypcja nagrań); puste = domyślne modele Gemini z `src/lib/models.ts`. Dyktowanie głosem korzysta z rozpoznawania mowy przeglądarki (Chrome/Edge wysyłają głos do Google/Microsoft).
    - opcjonalnie `NEXT_PUBLIC_BARTEK_KALENDARZ` (link do umawiania rozmów 30 min) i `NEXT_PUBLIC_WIDEO_POWITALNE` (adres wideo powitalnego)
    - opcjonalnie `SITE_PASSWORD` — hasło na całą stronę na czas testów
@@ -53,6 +55,7 @@ Od tej chwili przycisk „Kontynuuj z Google” otwiera wybór konta Google i wr
 - „Kontynuuj z Google” → wybór konta → ankieta z Bartkiem → pulpit.
 - W kroku ścieżki: zapowiedź Bartka → lekcja („Obejrzane, lecimy do pytań”) → rozmowa z asystentem → „Przygotuj dokument z rozmowy” → Zatwierdzam / Pobierz.
 - W nagłówku pulpitu: „Zapisano w chmurze”. Postęp zostaje po zalogowaniu na innym komputerze.
+- Menu konta → **Ustawienia konta**: po jednej rozmowie z asystentem licznik pokazuje „Zostało … z … tokenów” (wymaga `0003_ai_usage.sql`). Tam też zmiana imienia i hasła.
 
 ## Uwagi
 

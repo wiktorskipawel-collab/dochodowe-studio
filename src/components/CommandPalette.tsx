@@ -9,7 +9,7 @@ import { Dialog } from "@base-ui/react/dialog";
 import { motion } from "motion/react";
 import {
   ArrowRight, CornerDownLeft, FileSignature, FileText, Footprints, LayoutDashboard, Library, Lock, Dumbbell, PlayCircle, Route, Search,
-  Sparkles, Store, type LucideIcon,
+  Settings, Sparkles, Store, type LucideIcon,
 } from "lucide-react";
 import { useJourney } from "@/lib/store";
 import { STEPS, stepStatuses } from "@/lib/journey";
@@ -32,12 +32,13 @@ const PAGES: Omit<Item, "group" | "id">[] = [
   { title: "Pulpit", hint: "Start, postęp i następny krok", href: "/", icon: LayoutDashboard, keywords: "start dashboard xp seria" },
   { title: "Twoja ścieżka", hint: "Mapa wszystkich kroków", href: "/sciezka", icon: Route, keywords: "mapa etapy" },
   { title: "Lekcje", hint: "Nagrania do kroków", href: "/lekcje", icon: PlayCircle, keywords: "wideo kurs nagrania" },
-  { title: "Kursy Bartka", hint: "Biblioteka kursów", href: "/lekcje#kursy", icon: Library, keywords: "skool szkolenia" },
+  { title: "Kursy", hint: "Cały program krok po kroku", href: "/lekcje#kursy", icon: Library, keywords: "skool szkolenia biblioteka kursow" },
   { title: "Dla trenerów zespołu", hint: "Lekcje dla zespołu", href: "/lekcje#zespol", icon: Dumbbell, keywords: "trenerzy zespół" },
   { title: "Dokumenty", hint: "Wszystko, co powstało na ścieżce", href: "/dokumenty", icon: FileText, keywords: "dna awatar oferta strategia pobierz" },
   { title: "Wzory dokumentów", hint: "Umowy i regulaminy", href: "/dokumenty#wzory", icon: FileSignature, keywords: "umowa regulamin prawnik" },
   { title: "Narzędzia AI", hint: "Wszystkie szybkie akcje", href: "/narzedzia", icon: Sparkles, keywords: "szybkie akcje asystent" },
   { title: "Lokal i otwarcie", hint: "Kalkulator lokalu i najem", href: "/lokal", icon: Store, keywords: "najem czynsz kalkulator" },
+  { title: "Ustawienia konta", hint: "Imię, hasło, limit AI, dźwięki", href: "/ustawienia", icon: Settings, keywords: "konto profil haslo tokeny limit zuzycie licznik dzwieki wyloguj kontakt" },
 ];
 
 function countLabel(n: number) {

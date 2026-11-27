@@ -2,7 +2,7 @@
 // Uzupełnia src/lib/ai.ts (tam jest rozmowa strumieniowa); klucz wybiera resolveKey z ai.ts, model PLATFORM_MODEL.
 // TYLKO SERWER (importują go wyłącznie trasy w src/app/api). Nie zapisujemy ani nie logujemy treści zapytań i odpowiedzi.
 import OpenAI, { APIError as OpenAIError } from "openai";
-import { AiError } from "@/lib/ai";
+import { AiError, type UsageReport } from "@/lib/ai";
 
 export type JsonRequest = {
   apiKey: string;
@@ -11,6 +11,7 @@ export type JsonRequest = {
   user: string; // dane do przetworzenia (np. treść ogłoszenia)
   maxTokens?: number;
   timeoutMs?: number;
+  onUsage?: UsageReport; // zużyte tokeny (licznik miesięczny, src/lib/usage.ts); wołane, gdy AI odpowiedziało
 };
 
 /** Wyciąga obiekt JSON z odpowiedzi modelu: sam JSON, JSON w bloku ```json``` albo pierwszy {...} w tekście. */
@@ -59,6 +60,13 @@ export async function completeJson(req: JsonRequest): Promise<Record<string, unk
   try {
     const res = await client.chat.completions.create(params);
     text = res.choices[0]?.message?.content ?? "";
+    // OpenRouter zawsze zwraca `usage`; gdy go brak — szacunek ok. 3,5 znaku na token (wejście + odpowiedź).
+    const total = res.usage?.total_tokens ?? 0;
+    try {
+      req.onUsage?.(total > 0 ? total : Math.ceil((params.messages[0].content.length + req.user.length + text.length) / 3.5));
+    } catch {
+      // licznik nie może zepsuć odpowiedzi
+    }
   } catch (err) {
     if (err instanceof OpenAIError) {
       if (err.status === 401) throw new AiError(503, "Asystent jest chwilowo niedostępny. Spróbuj ponownie za kilka minut.");

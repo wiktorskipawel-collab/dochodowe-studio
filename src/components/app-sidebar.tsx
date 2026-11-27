@@ -7,7 +7,7 @@ import { motion } from "motion/react";
 import {
   LayoutDashboardIcon, RouteIcon, FileTextIcon, PlayCircleIcon, PlugZapIcon, LogOutIcon, EllipsisVerticalIcon, FlameIcon,
   DnaIcon, UserRoundIcon, GemIcon, TargetIcon, ClapperboardIcon, FilmIcon, MousePointerClickIcon, CheckIcon, PhoneCallIcon, HeadsetIcon, SparklesIcon, StoreIcon, FileSignatureIcon, LibraryIcon, CompassIcon, Volume2Icon, VolumeXIcon,
-  type LucideIcon,
+  SettingsIcon, type LucideIcon,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -16,7 +16,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useJourney } from "@/lib/store";
 import { progressPercent } from "@/lib/journey";
@@ -24,7 +24,8 @@ import { platformAi } from "@/lib/models";
 import { levelOf, streakDays, xpTotal } from "@/lib/gamification";
 import { Ring } from "@/components/Charts";
 import { startTour } from "@/components/Onboarding";
-import { play, setSoundOn, soundOn } from "@/lib/sfx";
+import { useSoundSetting } from "@/components/SoundSetting";
+import { ContactBubbleMini } from "@/components/ContactBubble";
 
 type Item = { title: string; url: string; icon: LucideIcon; doc?: string };
 
@@ -54,7 +55,7 @@ const ACTIONS: Item[] = [
 // Kursy ułożone jak na Skool (kurs → moduły → lekcje); osobna biblioteka „Dla trenerów zespołu” znika (prośba 2026-11-27).
 const STUDIO: Item[] = [
   { title: "Lokal i otwarcie", url: "/lokal", icon: StoreIcon },
-  { title: "Kursy (jak na Skool)", url: "/lekcje#kursy", icon: LibraryIcon },
+  { title: "Kursy", url: "/lekcje#kursy", icon: LibraryIcon },
   { title: "Wzory dokumentów", url: "/dokumenty#wzory", icon: FileSignatureIcon },
 ];
 
@@ -150,6 +151,8 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
       </SidebarContent>
 
       <SidebarFooter>
+        {/* chmurka z kontaktem do Pawła (ukrywana na 7 dni, w zwiniętym menu jej nie ma) */}
+        <ContactBubbleMini />
         <NavUser />
       </SidebarFooter>
       <SidebarRail />
@@ -179,10 +182,10 @@ function MiniLevel({ pct, index, text }: { pct: number; index: number; text: str
 }
 
 function NavUser() {
-  const { isMobile } = useSidebar();
+  const { isMobile, setOpenMobile } = useSidebar();
   const { state, signOut } = useJourney();
   const router = useRouter();
-  const [sound, setSound] = React.useState(soundOn);
+  const [sound, toggleSound] = useSoundSetting(); // ten sam przełącznik co w /ustawienia
   const name = state.profile?.name ?? "Uczestnik";
   const email = state.profile?.email ?? "";
   const initials = name.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
@@ -202,11 +205,15 @@ function NavUser() {
             <EllipsisVerticalIcon className="ml-auto size-4" />
           </DropdownMenuTrigger>
           <DropdownMenuContent className="min-w-56" side={isMobile ? "bottom" : "right"} align="end" sideOffset={4}>
-            <DropdownMenuLabel className="text-xs text-muted-foreground">Konto</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => { router.push("/"); startTour(); }}><CompassIcon />Powitanie i przewodnik</DropdownMenuItem>
-            <DropdownMenuItem closeOnClick={false} onClick={() => { const on = !sound; setSoundOn(on); setSound(on); if (on) play("xp"); }}>{sound ? <Volume2Icon /> : <VolumeXIcon />}Dźwięki nagród: {sound ? "włączone" : "wyłączone"}</DropdownMenuItem>
-            {platformAi ? null : <DropdownMenuItem onClick={() => router.push("/polacz")}><PlugZapIcon />Połączenie z AI</DropdownMenuItem>}
-            {platformAi ? null : <DropdownMenuSeparator />}
+            {/* Etykieta grupy musi być w DropdownMenuGroup (Base UI: bez grupy menu się wysypuje przy otwarciu). */}
+            <DropdownMenuGroup>
+              <DropdownMenuLabel className="text-xs text-muted-foreground">Konto</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => { if (isMobile) setOpenMobile(false); router.push("/ustawienia"); }}><SettingsIcon />Ustawienia konta</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => { router.push("/"); startTour(); }}><CompassIcon />Powitanie i przewodnik</DropdownMenuItem>
+              <DropdownMenuItem closeOnClick={false} onClick={toggleSound}>{sound ? <Volume2Icon /> : <VolumeXIcon />}Dźwięki nagród: {sound ? "włączone" : "wyłączone"}</DropdownMenuItem>
+              {platformAi ? null : <DropdownMenuItem onClick={() => router.push("/polacz")}><PlugZapIcon />Połączenie z AI</DropdownMenuItem>}
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => { signOut(); router.push("/logowanie"); }}><LogOutIcon />Wyloguj</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

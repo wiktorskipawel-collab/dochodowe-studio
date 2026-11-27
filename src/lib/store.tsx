@@ -9,14 +9,26 @@ import type { User } from "@supabase/supabase-js";
 import { getSupabase, supabaseEnabled } from "@/lib/supabase/client";
 import { signOutRemote } from "@/lib/auth";
 import type { ConnectionMode } from "@/lib/models";
-import { XP, levelOf, xpTotal } from "@/lib/gamification";
+import { XP, levelOf, xpTotal, badges, phaseProgress, type Badge } from "@/lib/gamification";
+import { STEPS, stepStatuses } from "@/lib/journey";
 import { demoState } from "@/lib/demo";
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
 export type DocStatus = "draft" | "approved";
 export type JourneyDoc = { content: string; status: DocStatus; updatedAt: string };
 export type JourneyEvent = { type: "ai" | "survey" | "path" | "draft" | "approve" | "lesson" | "msg"; at: string; ref?: string };
-export type Reward = { xp: number; title: string; levelUp?: string; big?: boolean };
+/** Nagroda po działaniu. Pola dodatkowe = to, co się właśnie odblokowało (pokazujemy po kolei, jak w Duolingo). */
+export type Reward = {
+  id: number;
+  kind: JourneyEvent["type"];
+  xp: number;
+  title: string;
+  levelUp?: { index: number; name: string };
+  big?: boolean;
+  badges?: Badge[]; // nowe odznaki
+  phase?: string; // zamknięty etap
+  unlocked?: { id: string; no: string; title: string }; // odblokowany kolejny krok
+};
 
 export type JourneyState = {
   version: 1;
@@ -186,9 +198,29 @@ export function JourneyProvider({ children }: { children: ReactNode }) {
     const before = levelOf(xpTotal(prev.events));
     const events = [...next.events, { ...event, at: new Date().toISOString() }];
     const after = levelOf(xpTotal(events));
-    setState({ ...next, events });
-    if (title || after.index > before.index) {
-      setReward({ xp: XP[event.type], title: title ?? "Postęp!", levelUp: after.index > before.index ? after.name : undefined, big: big || after.index > before.index });
+    const done = { ...next, events };
+    setState(done);
+    // co się właśnie odblokowało
+    const had = new Set(badges(prev).filter((b) => b.earned).map((b) => b.id));
+    const fresh = badges(done).filter((b) => b.earned && !had.has(b.id));
+    const phasesBefore = new Map(phaseProgress(prev).map((p) => [p.phase, p.done === p.total]));
+    const phase = phaseProgress(done).find((p) => p.done === p.total && !phasesBefore.get(p.phase))?.phase;
+    const stBefore = stepStatuses(prev);
+    const stAfter = stepStatuses(done);
+    const opened = STEPS.find((st) => stBefore[st.id] === "locked" && stAfter[st.id] !== "locked");
+    const levelUp = after.index > before.index ? { index: after.index, name: after.name } : undefined;
+    if (title || levelUp || fresh.length || phase) {
+      setReward({
+        id: Date.now(),
+        kind: event.type,
+        xp: XP[event.type],
+        title: title ?? "Postęp!",
+        levelUp,
+        big: big || !!levelUp || !!fresh.length || !!phase,
+        badges: fresh.length ? fresh : undefined,
+        phase,
+        unlocked: opened ? { id: opened.id, no: opened.no, title: opened.title } : undefined,
+      });
     }
   }, []);
 

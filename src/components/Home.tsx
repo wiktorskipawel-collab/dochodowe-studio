@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "motion/react";
-import { ArrowRight, Check, Flame, Zap, FileCheck2, PlayCircle, Route, Dna, Gem, Rocket, PenLine, Trophy, Plug, MessageCircle, BookOpen, ChartPie, ChartColumn, Flag, User, Target, Lock, TrendingUpIcon, type LucideIcon } from "lucide-react";
+import { ArrowRight, Check, Flame, Zap, FileCheck2, PlayCircle, Route, Trophy, Lock, TrendingUpIcon } from "lucide-react";
 import { useJourney } from "@/lib/store";
 import { STEPS, STAGES, stepStatuses, progressPercent, currentStep, allLessons } from "@/lib/journey";
 import { xpTotal, levelOf, streakDays, activityGrid, phaseProgress, docCompleteness, badges, weeklyActivity, dailySeries, lastWeek } from "@/lib/gamification";
@@ -14,8 +14,8 @@ import { PhasesRadial, WeekStacked, ActivityLine } from "@/components/DashboardC
 import { Card, CardAction, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Pill } from "@/components/ui";
+import { BadgeIcon } from "@/components/BadgeIcon";
 
-const BADGE_ICON: Record<string, LucideIcon> = { plug: Plug, flag: Flag, dna: Dna, user: User, gem: Gem, target: Target, rocket: Rocket, pen: PenLine, chart: ChartColumn, chat: MessageCircle, book: BookOpen, flame: Flame, half: ChartPie, trophy: Trophy };
 
 export function Home() {
   const { state, reset } = useJourney();
@@ -180,12 +180,11 @@ export function Home() {
         <ChartCard title={`Odznaki: ${earned} z ${allBadges.length}`} subtitle="Zdobywasz je za prawdziwe postępy">
           <ul className="grid grid-cols-3 gap-3 sm:grid-cols-5">
             {allBadges.map((b, i) => {
-              const Icon = BADGE_ICON[b.icon] ?? Trophy;
               return (
                 <motion.li key={b.id} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.03 }} whileHover={{ y: -4, scale: 1.06 }}
                   className="flex flex-col items-center gap-1.5 text-center" title={`${b.title}: ${b.desc}`}>
                   <span className={`grid size-14 place-items-center rounded-2xl ${b.earned ? "bg-brand text-brand-ink shadow-[0_8px_24px_-8px_rgba(114,196,28,.55)]" : "bg-white/5 text-white/35"}`}>
-                    <Icon className="size-6" aria-hidden="true" />
+                    <BadgeIcon icon={b.icon} className="size-6" />
                   </span>
                   <span className={`text-[11px] font-semibold leading-tight ${b.earned ? "" : "text-white/55"}`}>{b.title}</span>
                   <span className="sr-only">{b.earned ? "zdobyta" : "jeszcze nie"}: {b.desc}</span>

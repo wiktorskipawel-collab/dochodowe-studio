@@ -9,7 +9,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { AnimatePresence, MotionConfig, motion, useReducedMotion } from "motion/react";
 import { ArrowRight, Flame, Hand, PartyPopper, X } from "lucide-react";
 import { helloKey, useJourney, type JourneyState } from "@/lib/store";
-import { STEPS, currentStep, stepStatuses } from "@/lib/journey";
+import { currentStep, stepStatuses } from "@/lib/journey";
 import { activityByDay, dayKey, streakDays } from "@/lib/gamification";
 import { ASSISTANT_NAME, AssistantAvatar, AssistantDock } from "@/components/Assistant";
 
@@ -78,20 +78,6 @@ function welcomeScene(state: JourneyState, opts: { firstVisit?: boolean; summone
   } else if (streak >= 2) lines.push(`Seria: ${streak} dni z rzędu. Tak się buduje studio.`);
 
   return { id: `hello-${opts.summoned ? "on-demand" : "entry"}-${now.getTime()}`, mood, lines, cta: move.cta };
-}
-
-function approveScene(state: JourneyState, docId: string): Scene {
-  const step = STEPS.find((s) => s.docId === docId);
-  const next = currentStep(state);
-  const name = firstName(state);
-  const lines = [`Zatwierdzone${name ? `, ${name}` : ""}! „${step?.title ?? "Dokument"}” jest już w Twoich dokumentach.`];
-  lines.push(next ? `Następny krok: „${next.title}”. Idziemy za ciosem?` : "To był ostatni krok ścieżki. Kawał dobrej roboty.");
-  return {
-    id: `approve-${docId}`,
-    mood: "cheer",
-    lines,
-    cta: next ? { label: `Przejdź do kroku ${next.no}`, href: `/krok/${next.id}` } : { label: "Zobacz dokumenty", href: "/dokumenty" },
-  };
 }
 
 function streakScene(state: JourneyState, streak: number): Scene {
@@ -252,13 +238,10 @@ export function AssistantHost() {
   const [scene, setScene] = useState<Scene | null>(null);
   const email = state.profile?.email ?? "";
   const latest = useRef(state);
-  const seen = useRef<number | null>(null);
-  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   useEffect(() => {
     latest.current = state;
   });
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
   // Wejście do aplikacji: powitanie raz dziennie (i po każdym zalogowaniu), a wieczorem — przypomnienie o serii.
   useEffect(() => {
@@ -289,20 +272,7 @@ export function AssistantHost() {
     }
   }, [ready, email]);
 
-  // Zatwierdzony dokument: po konfetti Bartek gratuluje i pokazuje następny krok.
-  useEffect(() => {
-    if (!ready) return;
-    const count = state.events.length;
-    const prev = seen.current;
-    seen.current = count;
-    if (prev === null || count <= prev) return;
-    const fresh = state.events.slice(prev);
-    const approved = [...fresh].reverse().find((e) => e.type === "approve");
-    // tylko świeże zdarzenie z tej sesji, nie postęp wczytany z bazy
-    if (!approved?.ref || Date.now() - Date.parse(approved.at) > 15_000) return;
-    const docId = approved.ref;
-    timers.current.push(setTimeout(() => setScene(approveScene(latest.current, docId)), 2600));
-  }, [ready, state.events]);
+  // Zatwierdzony dokument: gratulacje i następny krok pokazuje ekran fanfar (Celebration.tsx).
 
   const close = useCallback(() => setScene(null), []);
   const summon = useCallback(() => setScene(welcomeScene(latest.current, { summoned: true })), []);

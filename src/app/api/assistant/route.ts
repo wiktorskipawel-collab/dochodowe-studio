@@ -61,7 +61,7 @@ export async function POST(request: Request) {
   const { key: apiKey, platform } = await resolveKey(provider);
   if (!apiKey) {
     return platformAi
-      ? plain("Asystent nie jest jeszcze włączony (brak klucza AI na serwerze). Daj znać zespołowi Dochodowego Studia.", 503)
+      ? plain("Asystent jest chwilowo niedostępny. Spróbuj ponownie za kilka minut.", 503)
       : plain("Twoje AI nie jest połączone. Wejdź w „Połącz AI” i zaloguj się.", 401);
   }
   // Za AI platformy płacimy my: rozmawiać mogą tylko zalogowani uczestnicy.

@@ -43,10 +43,10 @@ export const PROVIDERS: Record<Provider, {
   },
 };
 
-/** AI PLATFORMY: jeden klucz OpenRouter na serwerze (OPENROUTER_API_KEY), uczestnik niczego nie łączy.
- *  Model ustawiasz w NEXT_PUBLIC_AI_MODEL (np. deepseek/deepseek-v3.2). Puste = stary tryb: uczestnik łączy swoje AI. */
-export const PLATFORM_MODEL = process.env.NEXT_PUBLIC_AI_MODEL ?? "";
-export const platformAi = PLATFORM_MODEL !== "";
+/** AI PLATFORMY (wygląd docelowy, decyzja Pawła 2026-11-27): jeden klucz OpenRouter na serwerze (OPENROUTER_API_KEY),
+ *  uczestnik niczego nie łączy i nie korzysta z własnego ChatGPT. Model: NEXT_PUBLIC_AI_MODEL, domyślnie DeepSeek V3.2. */
+export const PLATFORM_MODEL = process.env.NEXT_PUBLIC_AI_MODEL || "deepseek/deepseek-v3.2";
+export const platformAi = true;
 
 /** Z jakiego AI korzysta teraz uczestnik: AI platformy albo własne połączenie (null = jeszcze nic). */
 export function activeAi(ai: { mode: ConnectionMode | null; model: string }): { mode: ConnectionMode; model: string } | null {

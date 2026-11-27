@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import {
   LayoutDashboardIcon, RouteIcon, FileTextIcon, PlayCircleIcon, PlugZapIcon, LogOutIcon, EllipsisVerticalIcon, FlameIcon,
-  DnaIcon, UserRoundIcon, GemIcon, TargetIcon, UserPlusIcon, ClapperboardIcon, FilmIcon, MousePointerClickIcon, CheckIcon, CompassIcon,
+  DnaIcon, UserRoundIcon, GemIcon, TargetIcon, UserPlusIcon, ClapperboardIcon, FilmIcon, MousePointerClickIcon, CheckIcon, CompassIcon, Volume2Icon, VolumeXIcon,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -23,6 +23,7 @@ import { platformAi } from "@/lib/models";
 import { levelOf, streakDays, xpTotal } from "@/lib/gamification";
 import { Ring } from "@/components/Charts";
 import { startTour } from "@/components/Onboarding";
+import { play, setSoundOn, soundOn } from "@/lib/sfx";
 
 type Item = { title: string; url: string; icon: LucideIcon; doc?: string };
 
@@ -134,6 +135,7 @@ function NavUser() {
   const { isMobile } = useSidebar();
   const { state, signOut } = useJourney();
   const router = useRouter();
+  const [sound, setSound] = React.useState(soundOn);
   const name = state.profile?.name ?? "Uczestnik";
   const email = state.profile?.email ?? "";
   const initials = name.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
@@ -155,6 +157,7 @@ function NavUser() {
           <DropdownMenuContent className="min-w-56" side={isMobile ? "bottom" : "right"} align="end" sideOffset={4}>
             <DropdownMenuLabel className="text-xs text-muted-foreground">Konto</DropdownMenuLabel>
             <DropdownMenuItem onClick={() => { router.push("/"); startTour(); }}><CompassIcon />Powitanie i przewodnik</DropdownMenuItem>
+            <DropdownMenuItem closeOnClick={false} onClick={() => { const on = !sound; setSoundOn(on); setSound(on); if (on) play("xp"); }}>{sound ? <Volume2Icon /> : <VolumeXIcon />}Dźwięki nagród: {sound ? "włączone" : "wyłączone"}</DropdownMenuItem>
             {platformAi ? null : <DropdownMenuItem onClick={() => router.push("/polacz")}><PlugZapIcon />Połączenie z AI</DropdownMenuItem>}
             {platformAi ? null : <DropdownMenuSeparator />}
             <DropdownMenuItem onClick={() => { signOut(); router.push("/logowanie"); }}><LogOutIcon />Wyloguj</DropdownMenuItem>

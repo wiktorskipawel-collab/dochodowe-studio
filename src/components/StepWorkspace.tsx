@@ -1,14 +1,15 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { motion } from "motion/react";
-import { Send, LoaderCircle, FileText, Check, PlayCircle, ClipboardCopy, ExternalLink, Wand2, ArrowRight, Lock, Settings, Download } from "lucide-react";
+import { LoaderCircle, FileText, Check, PlayCircle, ClipboardCopy, ExternalLink, Wand2, ArrowRight, Lock, Settings, Download, MessagesSquare } from "lucide-react";
 import { useJourney, type ChatMessage } from "@/lib/store";
 import { STEPS, stepStatuses, contextDocs } from "@/lib/journey";
 import type { Lesson, Step } from "@/lib/journey-types";
 import { buildManualPrompt } from "@/lib/assistant";
-import { activeAi } from "@/lib/models";
+import { CHAT_LIMITS, activeAi } from "@/lib/models";
+import { STEP_CHAT_INTRO, STEP_INTRO_KEY } from "@/lib/tools-public";
 import { downloadText, fileName } from "@/lib/download";
 import { Pill } from "@/components/ui";
 import { toast } from "sonner";
@@ -18,8 +19,13 @@ import { Marker, MarkerContent, MarkerIcon } from "@/components/ui/marker";
 import { Spinner } from "@/components/ui/spinner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { AssistantAvatar, ASSISTANT_NAME } from "@/components/Assistant";
+import { ChatComposer, UserMessageBody, composeUserMessage, type ImageDraft } from "@/components/ChatComposer";
+import { HowItWorks, IntroDialog, useIntro } from "@/components/ToolIntro";
+import { StepTools } from "@/components/StepTools";
 
 // Krok prowadzony przez Bartka (decyzja Pawła 2026-11-27): zapowiedź → lekcja (odhaczenie) → rozmowa → dokument → zatwierdzenie.
+// Obok: „Narzędzia do tego kroku” (StepTools, panel boczny) i zwijane „Jak to działa” czatu kroku (pierwszy raz: okienko).
+// Rozmowa przyjmuje tekst, dyktowanie, zdjęcia, nagrania i transkrypcje (ChatComposer).
 const STAGES = ["Lekcja", "Rozmowa z Bartkiem", "Dokument", "Zatwierdzenie"] as const;
 
 export function StepWorkspace({ stepId }: { stepId: string }) {
@@ -40,7 +46,11 @@ export function StepWorkspace({ stepId }: { stepId: string }) {
       <div className="glass-card flex flex-col items-start gap-3 rounded-2xl p-6">
         <Lock className="size-6 text-white/70" aria-hidden="true" />
         <h2 className="text-xl font-semibold">Ten krok odblokuje się później</h2>
-        <p className="text-white/75">Najpierw zatwierdź dokumenty z poprzednich kroków. Kolejność ma znaczenie: każdy krok korzysta z wyników poprzedniego.</p>
+        <p className="text-white/75">
+          {step.unlockAfter
+            ? `Ten krok otworzy się po zatwierdzeniu kroku „${STEPS.find((s) => s.id === step.unlockAfter)?.title ?? step.unlockAfter}”.`
+            : "Najpierw zatwierdź dokumenty z poprzednich kroków. Kolejność ma znaczenie: każdy krok korzysta z wyników poprzedniego."}
+        </p>
         <Link href="/sciezka" className="inline-flex min-h-11 items-center rounded-xl bg-brand px-5 font-semibold text-brand-ink">Wróć do ścieżki</Link>
       </div>
     );
@@ -116,6 +126,7 @@ export function StepWorkspace({ stepId }: { stepId: string }) {
               </Link>
             ) : null}
           </section>
+          <StepTools stepId={stepId} />
           <section className="glass-card rounded-2xl p-5">
             <h2 className="mb-2 font-semibold">Krok skończony, gdy:</h2>
             <ul className="flex flex-col gap-2 text-sm text-white/80">
@@ -127,6 +138,7 @@ export function StepWorkspace({ stepId }: { stepId: string }) {
               ))}
             </ul>
           </section>
+          <HowItWorks intro={STEP_CHAT_INTRO} hint="Bartek prowadzi krok: najpierw lekcja, potem pytania jedno po drugim, na końcu dokument do zatwierdzenia." defaultOpen={false} />
         </aside>
       </div>
     </div>
@@ -257,13 +269,16 @@ function AssistantChat({ stepId, prelude, provider, model, messages, onChange, o
 }) {
   const { state } = useJourney();
   const step = STEPS.find((s) => s.id === stepId)!;
+  const intro = useIntro(STEP_INTRO_KEY);
   const [input, setInput] = useState("");
+  const [images, setImages] = useState<ImageDraft[]>([]);
+  const [sentPics, setSentPics] = useState<Record<number, string[]>>({});
   const [busy, setBusy] = useState<"chat" | "document" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const shown: ChatMessage[] = [{ role: "assistant", content: step.opener }, ...messages];
 
-  async function call(mode: "chat" | "document", history: ChatMessage[], onText: (t: string) => void) {
+  async function call(mode: "chat" | "document", history: (ChatMessage & { images?: string[] })[], onText: (t: string) => void) {
     const res = await fetch("/api/assistant", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -289,24 +304,29 @@ function AssistantChat({ stepId, prelude, provider, model, messages, onChange, o
     return text;
   }
 
-  async function send(e: FormEvent) {
-    e.preventDefault();
-    const content = input.trim();
-    if (!content || busy) return;
+  async function send() {
+    const text = input;
+    const pics = images;
+    if ((!text.trim() && !pics.length) || busy) return;
+    const { stored, request } = composeUserMessage(text, pics);
     setError(null);
     setInput("");
-    const history: ChatMessage[] = [...messages, { role: "user", content }];
+    setImages([]);
+    const history: ChatMessage[] = [...messages, { role: "user", content: stored }];
+    if (pics.length) setSentPics((cur) => ({ ...cur, [history.length]: pics.map((p) => p.url) })); // indeks w `shown` (pierwsza wiadomość kroku = 0)
     onChange([...history, { role: "assistant", content: "" }]);
     setBusy("chat");
     try {
-      const answer = await call("chat", history, (t) => {
+      const answer = await call("chat", [...messages, request], (t) => {
         onChange([...history, { role: "assistant", content: t }]);
         endRef.current?.scrollIntoView({ block: "end" });
       });
       onChange([...history, { role: "assistant", content: answer }]);
     } catch (err) {
       setError(err instanceof Error && err.message ? err.message : "Brak połączenia z serwerem.");
-      onChange(history);
+      onChange(messages); // wiadomość (i zdjęcia) wracają do pola, można wysłać jeszcze raz
+      setInput(text);
+      setImages(pics);
     } finally {
       setBusy(null);
     }
@@ -350,7 +370,7 @@ function AssistantChat({ stepId, prelude, provider, model, messages, onChange, o
                 <Message align="end">
                   <MessageAvatar><Avatar className="size-9"><AvatarFallback className="bg-green-strong text-xs font-bold text-white">{(state.profile?.name ?? "Ty").slice(0, 2).toUpperCase()}</AvatarFallback></Avatar></MessageAvatar>
                   <MessageContent>
-                    <Bubble><BubbleContent className="whitespace-pre-wrap leading-relaxed">{m.content}</BubbleContent></Bubble>
+                    <Bubble><BubbleContent className="max-h-80 overflow-y-auto"><UserMessageBody text={m.content} pictures={sentPics[i]} /></BubbleContent></Bubble>
                   </MessageContent>
                 </Message>
               )}
@@ -361,21 +381,26 @@ function AssistantChat({ stepId, prelude, provider, model, messages, onChange, o
         <div ref={endRef} />
       </div>
       {error ? <p role="alert" className="rounded-xl border border-red-400/40 bg-red-400/10 px-4 py-3 text-sm text-red-200">{error}</p> : null}
-      <form onSubmit={send} className="glass-card flex items-end gap-2 rounded-2xl p-2">
-        <label htmlFor="msg" className="sr-only">Twoja odpowiedź</label>
-        <textarea id="msg" value={input} rows={2} maxLength={6000} onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); e.currentTarget.form?.requestSubmit(); } }}
-          placeholder="Napisz odpowiedź (Enter wysyła, Shift+Enter nowa linia)"
-          className="min-h-11 flex-1 resize-none rounded-xl bg-transparent px-3 py-2 text-white placeholder:text-white/50 focus:outline-none" />
-        <button type="submit" disabled={!!busy || !input.trim()} aria-label="Wyślij" className="grid size-11 shrink-0 place-items-center rounded-xl bg-brand text-brand-ink disabled:opacity-40">
-          {busy === "chat" ? <LoaderCircle className="size-5 animate-spin" aria-hidden="true" /> : <Send className="size-5" aria-hidden="true" />}
-        </button>
-      </form>
+      <ChatComposer
+        id={`msg-${stepId}`}
+        label="Twoja odpowiedź"
+        value={input}
+        setValue={setInput}
+        images={images}
+        setImages={setImages}
+        onSubmit={() => void send()}
+        busy={busy === "chat"}
+        maxChars={CHAT_LIMITS.message}
+        rows={2}
+        placeholder="Napisz albo podyktuj odpowiedź"
+        features={{ images: true, audio: true, transcript: true }}
+      />
       <button type="button" onClick={makeDocument} disabled={!!busy || messages.length < 2}
         className="inline-flex min-h-11 w-fit items-center gap-2 rounded-xl border border-white/20 px-4 text-sm font-semibold hover:bg-white/10 disabled:opacity-40">
         {busy === "document" ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : <Wand2 className="size-4" aria-hidden="true" />}
         Przygotuj dokument z rozmowy
       </button>
+      <IntroDialog open={intro.open} onClose={intro.close} eyebrow="Jak to działa" title={`Rozmowa z Bartkiem: ${step.title}`} intro={STEP_CHAT_INTRO} icon={MessagesSquare} />
     </>
   );
 }

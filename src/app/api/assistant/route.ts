@@ -1,13 +1,17 @@
 // Asystent Marketing OS: przeglądarka → nasz serwer → AI (platformy albo uczestnika) → strumień tekstu.
 // Dwa tryby: krok ścieżki (`stepId`) albo szybka akcja z /narzedzia (`tool`, instrukcja narzędzia tylko na serwerze).
-import { AiError, LIMITS, resolveKey, streamAssistant, type ChatMessage } from "@/lib/ai";
-import { isAllowedModel, platformAi, type Provider } from "@/lib/models";
+// Zdjęcia (zrzuty ekranu) mogą być tylko w ostatniej wiadomości uczestnika: idą prosto do OpenRouter (model z obsługą
+// obrazu, data_collection: deny) i nie są nigdzie zapisywane ani logowane. Przeglądarka zapisuje w historii sam tekst.
+import { AiError, LIMITS, MEDIA_RULES, resolveKey, streamAssistant, type ChatMessage } from "@/lib/ai";
+import { CHAT_LIMITS, MEDIA_LIMITS, VISION_MODEL, isAllowedModel, platformAi, type Provider } from "@/lib/models";
 import { signedIn } from "@/lib/supabase/server";
 import { buildSystem, buildToolSystem } from "@/lib/assistant";
 import { findTool } from "@/lib/tools";
 
 const plain = (msg: string, status: number) =>
   new Response(msg, { status, headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } });
+
+const TOO_BIG = "Wiadomość jest za duża. Dodaj mniej zdjęć albo mniejsze zrzuty ekranu, a bardzo długi tekst podziel na części.";
 
 type Body = {
   provider?: unknown;
@@ -19,18 +23,47 @@ type Body = {
   context?: { stage?: unknown; documents?: unknown };
 };
 
-function parseMessages(raw: unknown): ChatMessage[] | null {
-  if (!Array.isArray(raw)) return null;
+// Zdjęcie = data URL JPEG/PNG/WebP; początek danych musi pasować do zadeklarowanego typu (sygnatura pliku w base64).
+const IMAGE_RE = /^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/]+={0,2})$/;
+const SIGNATURE: Record<string, string> = { jpeg: "/9j/", png: "iVBORw0KGgo", webp: "UklGR" };
+
+function validImage(x: unknown): x is string {
+  if (typeof x !== "string" || x.length > MEDIA_LIMITS.imageDataUrlMaxChars) return false;
+  const m = IMAGE_RE.exec(x);
+  return !!m && m[2].startsWith(SIGNATURE[m[1]]);
+}
+
+type Parsed = { ok: true; messages: ChatMessage[] } | { ok: false; error: string };
+
+function parseMessages(raw: unknown, maxChars: number): Parsed {
+  const bad: Parsed = { ok: false, error: "Nieprawidłowa rozmowa." };
+  if (!Array.isArray(raw)) return bad;
+  const list = raw.slice(-LIMITS.maxMessages);
   const out: ChatMessage[] = [];
-  for (const m of raw.slice(-LIMITS.maxMessages)) {
-    const { role, content } = (m ?? {}) as { role?: unknown; content?: unknown };
-    if ((role !== "user" && role !== "assistant") || typeof content !== "string") return null;
-    const text = content.trim().slice(0, LIMITS.maxCharsPerMessage);
-    if (text) out.push({ role, content: text });
+  for (let i = 0; i < list.length; i++) {
+    const { role, content, images } = (list[i] ?? {}) as { role?: unknown; content?: unknown; images?: unknown };
+    if ((role !== "user" && role !== "assistant") || typeof content !== "string") return bad;
+    let pics: string[] | undefined;
+    if (images !== undefined) {
+      if (role !== "user" || i !== list.length - 1 || !Array.isArray(images)) return { ok: false, error: "Zdjęcia można dołączyć tylko do nowej wiadomości." };
+      if (images.length > MEDIA_LIMITS.maxImages) return { ok: false, error: `Najwyżej ${MEDIA_LIMITS.maxImages} zdjęcia w jednej wiadomości.` };
+      if (!images.every(validImage)) return { ok: false, error: "Zdjęcie jest za duże albo ma nieobsługiwany format. Dodaj zrzut ekranu JPG albo PNG." };
+      if (images.length) pics = images;
+    }
+    const text = content.trim().slice(0, maxChars);
+    if (text || pics) out.push({ role, content: text || "Zobacz zdjęcia.", ...(pics ? { images: pics } : {}) });
   }
+  // Cała rozmowa ma limit znaków: zostają najnowsze wiadomości (ostatnia zawsze).
+  let budget = LIMITS.maxHistoryChars;
+  let start = out.length;
+  while (start > 0 && (start === out.length || budget >= out[start - 1].content.length)) {
+    budget -= out[start - 1].content.length;
+    start--;
+  }
+  const messages = out.slice(start);
   // Rozmowa musi zaczynać się od uczestnika — powitanie asystenta dokładamy do instrukcji, nie do historii.
-  while (out.length && out[0].role !== "user") out.shift();
-  return out;
+  while (messages.length && messages[0].role !== "user") messages.shift();
+  return { ok: true, messages };
 }
 
 function parseDocuments(raw: unknown): { title: string; content: string }[] {
@@ -49,6 +82,9 @@ function parseDocuments(raw: unknown): { title: string; content: string }[] {
 }
 
 export async function POST(request: Request) {
+  // Vercel i tak nie przyjmie więcej niż 4,5 MB; tu odpowiadamy zrozumiałym komunikatem, zanim zaczniemy czytać treść.
+  if (Number(request.headers.get("content-length") ?? 0) > MEDIA_LIMITS.requestMaxBytes) return plain(TOO_BIG, 413);
+
   let body: Body;
   try {
     body = (await request.json()) as Body;
@@ -63,18 +99,9 @@ export async function POST(request: Request) {
   if (!isAllowedModel(provider as Provider, model)) return plain("Wybierz model z listy w ustawieniach AI.", 400);
 
   // Szybka akcja: tylko znane id z tools.ts. Każda inna wartość pola `tool` (pusta, liczba, null, nieznane id) → 400.
-  // Sprawdzane przed kluczem i logowaniem: błędne zapytanie nie kosztuje nawet sprawdzenia sesji.
+  // Wszystko sprawdzamy przed kluczem i logowaniem: błędne zapytanie nie kosztuje nawet sprawdzenia sesji.
   const tool = body.tool === undefined ? null : typeof body.tool === "string" ? (findTool(body.tool) ?? null) : null;
   if (body.tool !== undefined && !tool) return plain("Nieznane narzędzie.", 400);
-
-  const { key: apiKey, platform } = await resolveKey(provider);
-  if (!apiKey) {
-    return platformAi
-      ? plain("Asystent jest chwilowo niedostępny. Spróbuj ponownie za kilka minut.", 503)
-      : plain("Twoje AI nie jest połączone. Wejdź w „Połącz AI” i zaloguj się.", 401);
-  }
-  // Za AI platformy płacimy my: rozmawiać mogą tylko zalogowani uczestnicy.
-  if (platform && !(await signedIn())) return plain("Zaloguj się, żeby rozmawiać z asystentem.", 401);
 
   const stepId = typeof body.stepId === "string" ? body.stepId : "";
   const mode = !tool && body.mode === "document" ? "document" : "chat";
@@ -85,20 +112,34 @@ export async function POST(request: Request) {
   const system = tool ? buildToolSystem(tool, ctx) : buildSystem(stepId, mode, ctx);
   if (!system) return plain("Nieznany krok ścieżki.", 400);
 
-  const messages = parseMessages(body.messages);
-  if (!messages) return plain("Nieprawidłowa rozmowa.", 400);
+  const parsed = parseMessages(body.messages, tool ? tool.maxChars : CHAT_LIMITS.message);
+  if (!parsed.ok) return plain(parsed.error, 400);
+  const messages = parsed.messages;
   if (mode === "document") {
     messages.push({ role: "user", content: "Na podstawie naszej rozmowy przygotuj teraz gotowy dokument dokładnie według szablonu z instrukcji. Bez wstępu i komentarzy." });
   }
   if (!messages.length || messages[messages.length - 1].role !== "user") return plain("Ostatnia wiadomość musi być Twoja.", 400);
 
+  // Zdjęcia czyta tylko model z obsługą obrazu przez OpenRouter (DeepSeek ich nie widzi).
+  const withImages = messages.some((m) => m.images?.length);
+  if (withImages && provider !== "openrouter") return plain("Zdjęcia działają tylko z AI platformy. Wklej tekst rozmowy.", 400);
+
+  const { key: apiKey, platform } = await resolveKey(provider);
+  if (!apiKey) {
+    return platformAi
+      ? plain("Asystent jest chwilowo niedostępny. Spróbuj ponownie za kilka minut.", 503)
+      : plain("Twoje AI nie jest połączone. Wejdź w „Połącz AI” i zaloguj się.", 401);
+  }
+  // Za AI platformy płacimy my: rozmawiać mogą tylko zalogowani uczestnicy.
+  if (platform && !(await signedIn())) return plain("Zaloguj się, żeby rozmawiać z asystentem.", 401);
+
   try {
     const stream = await streamAssistant({
       provider,
-      model,
+      model: withImages ? VISION_MODEL : model,
       apiKey,
       staticSystem: system.staticText,
-      dynamicSystem: system.dynamicText,
+      dynamicSystem: `${system.dynamicText}\n\n${MEDIA_RULES}`,
       messages,
       cacheKey: tool ? `marketing-os-tool-${tool.id}` : `marketing-os-${stepId}-${mode}`,
     });

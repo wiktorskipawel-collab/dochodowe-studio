@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { motion, useReducedMotion } from "motion/react";
-import { ArrowRight, Check, MessageCircle } from "lucide-react";
+import { ArrowRight, Check, MessageCircle, Route } from "lucide-react";
 import { useJourney } from "@/lib/store";
 import { STEPS } from "@/lib/journey";
-import type { ToolGroup } from "@/lib/tools";
+import { stepsForTool, type ToolGroup } from "@/lib/tools-public";
 import { Pill } from "@/components/ui";
 import { toolIcon } from "@/components/ToolIcon";
 
@@ -45,6 +45,7 @@ export function Tools({ groups }: { groups: ToolGroup[] }) {
               {g.tools.map((t) => {
                 const Icon = toolIcon(t.icon);
                 const docs = toolDocDefs(t.uses);
+                const inSteps = stepsForTool(t.id).flatMap((id) => STEPS.find((st) => st.id === id)?.no ?? []);
                 const talking = ready && (state.chats[toolChatKey(t.id)]?.length ?? 0) > 0;
                 const i = order.get(t.id) ?? 0;
                 return (
@@ -82,6 +83,12 @@ export function Tools({ groups }: { groups: ToolGroup[] }) {
                                 </span>
                               );
                             })}
+                          </span>
+                        ) : null}
+                        {inSteps.length ? (
+                          <span className="inline-flex items-center gap-1.5 text-xs text-white/60">
+                            <Route className="size-3.5 text-brand" aria-hidden="true" />
+                            Także w {inSteps.length === 1 ? "kroku" : "krokach"}: {inSteps.join(", ")}
                           </span>
                         ) : null}
                         <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand">

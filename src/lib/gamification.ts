@@ -1,7 +1,9 @@
 // Nagrody i statystyki uczestnika: XP, poziomy, seria dni, odznaki, kompletność dokumentów.
 // Wszystko liczone z prawdziwych działań (zdarzeń) uczestnika — nic nie jest wymyślone.
 import type { JourneyEvent, JourneyState } from "@/lib/store";
-import { STEPS, progressPercent, stepStatuses, allLessons } from "@/lib/journey";
+import type { StepStatus } from "@/lib/journey-types";
+import { STEPS, progressPercent, stepStatuses, allLessons, currentStep } from "@/lib/journey";
+import { KURSY, LEKCJE, type IdLekcjiKursu } from "@/lib/kursy";
 
 export const XP: Record<JourneyEvent["type"], number> = {
   ai: 30, // połączone AI
@@ -13,18 +15,24 @@ export const XP: Record<JourneyEvent["type"], number> = {
   msg: 2, // wiadomość do asystenta
 };
 
-// Nazwy poziomów bez rodzaju i zgodne ze ścieżką v2 (cały program, nie tylko marketing). DO ZATWIERDZENIA: nazwy i progi (Bartek).
+// POZIOMY = etapy rozwoju studia językiem Bartka (moduły Skool „Dochodowe Studio”), bez rodzaju gramatycznego
+// (nazywamy stan studia, nie osobę). DO ZATWIERDZENIA (Bartek): nazwy, opisy i progi.
+// Progi policzone pod ścieżkę: start (ankieta + ścieżka) ≈ 70 XP, jeden krok ≈ 110 XP (szkic + zatwierdzenie)
+// + jego lekcje (2–5 × 15 XP) + rozmowa (~8 wiadomości × 2 XP), czyli ok. 160–200 XP na krok:
+// po kroku 1 ≈ 225, po 3 ≈ 540, po 5 ≈ 910, po 7 ≈ 1270, po 9 ≈ 1610, po 11 ≈ 1970, po 14 ≈ 2510 XP.
+// Krok 15 „Zespół i delegowanie” (boczny, po ofercie) to kolejne ≈ 170 XP: „Studio bez Ciebie” = ścieżka z zespołem
+// (≈ 2680) + kilka lekcji, „Dochodowe Studio” = do tego reszta lekcji kursu „Dochodowe Studio” ze Skool.
 export const LEVELS = [
-  { min: 0, name: "Start" },
-  { min: 80, name: "Pierwsze kroki" },
-  { min: 200, name: "Fundament" },
-  { min: 350, name: "Klient w centrum" },
-  { min: 550, name: "Oferta 90 dni" },
-  { min: 800, name: "Sprzedaż w procesie" },
-  { min: 1050, name: "Lejek w ruchu" },
-  { min: 1350, name: "Liczby pod kontrolą" },
-  { min: 1700, name: "Studio na plusie" },
-  { min: 2000, name: "Dochodowe Studio" },
+  { min: 0, name: "Start!", opis: "Ankieta za Tobą, ruszamy z programem." },
+  { min: 200, name: "Diagnoza przed ofertą", opis: "Wiesz, gdzie dziś stoi studio i co blokuje wzrost." },
+  { min: 500, name: "Złoty model", opis: "DNA studia i model biznesowy spisane czarno na białym." },
+  { min: 850, name: "Grubaśna oferta", opis: "Awatar i oferta 90 dni, która sprzedaje zmianę, nie treningi." },
+  { min: 1200, name: "Skuteczna sprzedaż", opis: "Cel w liczbach i system, w którym żaden lead nie czeka." },
+  { min: 1550, name: "Zapytania bez końca", opis: "Strategia i lejek gotowe do startu." },
+  { min: 1900, name: "Pełny grafik", opis: "Lejek wdrożony, zgłoszenia płyną do kalendarza." },
+  { min: 2400, name: "Klient = przyjaciel", opis: "Wyniki pod kontrolą, klienci zostają i polecają." },
+  { min: 2750, name: "Studio bez Ciebie", opis: "Zespół i procesy, dzięki którym studio działa bez Twojej obecności." },
+  { min: 2950, name: "Dochodowe Studio", opis: "Cała ścieżka i cały kurs za Tobą. Studio zarabia." },
 ];
 
 export function xpTotal(events: JourneyEvent[]) {
@@ -37,7 +45,7 @@ export function levelOf(xp: number) {
   const cur = LEVELS[i];
   const next = LEVELS[i + 1];
   const pct = next ? Math.round(((xp - cur.min) / (next.min - cur.min)) * 100) : 100;
-  return { index: i + 1, name: cur.name, min: cur.min, next: next?.min ?? null, nextName: next?.name ?? null, pct };
+  return { index: i + 1, name: cur.name, opis: cur.opis, min: cur.min, next: next?.min ?? null, nextName: next?.name ?? null, pct };
 }
 
 export const dayKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -158,6 +166,7 @@ export function badges(state: JourneyState): Badge[] {
   add("tresci", "Treści gotowe", "Gotowce lejka zatwierdzone", "pen", approved("materialy-lejka"));
   add("liczby", "Liczby mówią", "Pierwszy przegląd tygodniowy", "chart", approved("wyniki"));
   add("utrzymanie", "Klienci zostają", "Zatwierdzony system utrzymania klientów", "heart", approved("utrzymanie"));
+  add("zespol", "Zespół w grze", "Zatwierdzony system zespołu i delegowania", "team", approved("zespol"));
   add("rozmowa", "Rozmowa w toku", "20 wiadomości z asystentem", "chat", msgs >= 20);
   add("wiedza", "Wiedza w praktyce", "5 zaliczonych lekcji", "book", lessons >= 5);
   add("seria3", "3 dni w ruchu", "3 dni z rzędu w akcji", "flame", streak >= 3);
@@ -212,4 +221,161 @@ export function dailySeries(events: JourneyEvent[], days = 60, now = new Date())
 export function lastWeek(events: JourneyEvent[], types: JourneyEvent["type"][], now = new Date()) {
   const from = now.getTime() - 7 * 24 * 3600 * 1000;
   return events.filter((e) => types.includes(e.type) && new Date(e.at).getTime() >= from);
+}
+
+// ---------- LEKCJE: „zaliczona” wspólnie dla ścieżki i biblioteki kursów ----------
+// Lekcja kursu (id „sk-…”) w ścieżce ma czasem stary id (pole `ref` łączy oba). Zatwierdzony krok liczymy jako
+// zaliczone lekcje tego kroku: StepWorkspace nie pozwala przejść do rozmowy i dokumentu bez odhaczenia lekcji.
+const PATH_LESSON = new Map<string, { ids: string[]; steps: string[] }>();
+const REF_OF = new Map<string, string>(); // id lekcji w ścieżce → id w kursach
+for (const s of STEPS) {
+  for (const l of s.lessons) {
+    const key = l.ref ?? l.id;
+    REF_OF.set(l.id, key);
+    const cur = PATH_LESSON.get(key) ?? { ids: [], steps: [] };
+    if (!cur.ids.includes(l.id)) cur.ids.push(l.id);
+    if (!cur.steps.includes(s.id)) cur.steps.push(s.id);
+    PATH_LESSON.set(key, cur);
+  }
+}
+const DOC_OF_STEP = new Map(STEPS.map((s) => [s.id, s.docId]));
+
+/** Czy lekcja (id ze ścieżki albo z kursów) jest zaliczona: obejrzana albo jej krok jest zatwierdzony. */
+export function lessonDone(state: JourneyState, lessonId: string): boolean {
+  if (state.watched[lessonId]) return true;
+  const key = REF_OF.get(lessonId) ?? lessonId;
+  const p = PATH_LESSON.get(key);
+  if (state.watched[key]) return true;
+  if (!p) return false;
+  if (p.ids.some((id) => state.watched[id])) return true;
+  return p.steps.some((st) => state.docs[DOC_OF_STEP.get(st) ?? ""]?.status === "approved");
+}
+
+/** Pierwszy krok, w którym jest lekcja kursu (żeby link prowadził do kroku, a nie do biblioteki). */
+export function stepOfLesson(kursId: string): string | undefined {
+  return PATH_LESSON.get(kursId)?.steps[0];
+}
+
+// ---------- KAMIENIE MILOWE = moduły kursu „Dochodowe Studio” na Skool ----------
+// Kamień zdobywasz, gdy zrobisz wszystkie zadania modułu: zatwierdzone kroki ścieżki przypisane do modułu
+// + lekcje modułu (zaliczone w kroku albo w bibliotece /lekcje#kursy) + ewentualne zadanie dodatkowe (lokal).
+// Każdy krok ścieżki należy do dokładnie jednego kamienia (kroki 1–14 + boczny krok 15 „zespol” w module 7; krok,
+// którego nie ma w STEPS, jest pomijany). Kamienie nie blokują się nawzajem: „Lokal” nie ma kroku, krok 14 (utrzymanie)
+// zamyka moduł 5, a krok 15 otwiera się już po ofercie, więc kolejność modułów ≠ kolejność kroków.
+// DO ZATWIERDZENIA (Bartek): przypisanie kroków do modułów, wymóg wszystkich lekcji modułu, zadanie „lokal”,
+// nagrody (30 min rozmowy po kamieniach 2, 4 i 6 — tyle samo rozmów co wcześniej) i opisy.
+export type MilestoneDef = {
+  id: string;
+  no: number; // numer modułu na Skool
+  module: string; // id modułu w KURSY (src/lib/kursy.ts)
+  title: string; // nazwa modułu jak na Skool
+  short: string; // krótka nazwa na szlak
+  icon: "start" | "model" | "lokal" | "sprzedaz" | "klienci" | "marketing" | "zespol" | "usprawnienia";
+  outcome: string; // co studio ma po zdobyciu kamienia
+  steps: string[]; // id kroków ścieżki
+  lokal?: boolean; // zadanie dodatkowe: pierwszy lokal w kalkulatorze /lokal
+  call?: boolean; // nagroda: 30 minut rozmowy z Bartkiem na żywo
+  note?: string; // dla kogo moduł jest najważniejszy
+};
+
+export const MILESTONES: MilestoneDef[] = [
+  { id: "m1", no: 1, module: "ds-start", title: "START!", short: "START!", icon: "start", outcome: "Studio prześwietlone: materiały, diagnoza i karta progresu.", steps: ["materialy", "diagnoza"] },
+  { id: "m2", no: 2, module: "ds-model", title: "Złoty model biznesowy", short: "Złoty model", icon: "model", outcome: "DNA studia, awatar klienta i Grubaśna oferta na 90 dni.", steps: ["dna", "awatar", "oferta"], call: true },
+  { id: "m3", no: 3, module: "ds-lokal", title: "Lokal", short: "Lokal", icon: "lokal", outcome: "Lokal policzony i sprawdzony, zanim podpiszesz umowę.", steps: [], lokal: true, note: "Najważniejszy przed otwarciem albo przy zmianie lokalu." },
+  { id: "m4", no: 4, module: "ds-sprzedaz", title: "Skuteczna sprzedaż", short: "Sprzedaż", icon: "sprzedaz", outcome: "Cel w liczbach i system, w którym żaden lead nie czeka.", steps: ["cel-budzet", "sprzedaz"], call: true },
+  { id: "m5", no: 5, module: "ds-klienci", title: "Dożywotni klienci", short: "Dożywotni klienci", icon: "klienci", outcome: "Klienci zostają na lata, polecają i wracają.", steps: ["utrzymanie"] },
+  { id: "m6", no: 6, module: "ds-marketing", title: "Marketing", short: "Marketing", icon: "marketing", outcome: "Strategia, gotowy lejek i plan wdrożenia: zapytania bez końca.", steps: ["strategia", "gotowosc", "materialy-lejka", "plan"], call: true },
+  { id: "m7", no: 7, module: "ds-zespol", title: "Budowanie teamu / Zatrudnianie", short: "Zespół", icon: "zespol", outcome: "Zespół, który prowadzi metodę studia: rozliczenia, rekrutacja, standardy i delegowanie.", steps: ["zespol"], note: "Najważniejszy, gdy studio rośnie ponad jedną osobę." },
+  { id: "m8", no: 8, module: "ds-usprawnienia", title: "Usprawnienia", short: "Usprawnienia", icon: "usprawnienia", outcome: "Przegląd wyników, kalendarz okazji i usprawnienia na co dzień.", steps: ["wyniki", "okazje"] },
+];
+
+/** Etapy ścieżki, których zamknięcie = kamień z rozmową (dla ekranu „Etap zamknięty” w Celebration.tsx).
+ *  Kamienie 2, 4 i 6 kończą się ostatnim krokiem etapu, a ich lekcje modułu są w krokach, więc zamknięcie etapu
+ *  i zdobycie kamienia wypadają w tej samej chwili. */
+export const CALL_PHASES = new Set(
+  MILESTONES.filter((m) => m.call && m.steps.length).map((m) => STEPS.find((s) => s.id === m.steps.at(-1))?.phase ?? ""),
+);
+
+export type MilestoneItem = {
+  kind: "step" | "lesson" | "extra";
+  id: string;
+  title: string;
+  done: boolean;
+  href: string;
+  no?: string; // numer kroku
+  status?: StepStatus;
+  video?: boolean;
+};
+
+export type MilestoneProgress = MilestoneDef & {
+  items: MilestoneItem[];
+  done: number;
+  total: number;
+  pct: number;
+  complete: boolean;
+  stepsDone: number;
+  stepsTotal: number;
+  lessonsDone: number;
+  lessonsTotal: number;
+  current: boolean; // tu jest Twój bieżący krok
+};
+
+export function milestones(state: JourneyState): MilestoneProgress[] {
+  const st = stepStatuses(state);
+  const cur = currentStep(state);
+  const course = KURSY.find((k) => k.id === "ds");
+  return MILESTONES.map((m) => {
+    const steps: MilestoneItem[] = m.steps.flatMap((id) => {
+      const s = STEPS.find((x) => x.id === id);
+      return s ? [{ kind: "step" as const, id: s.id, no: s.no, title: s.title, status: st[s.id], done: st[s.id] === "done", href: st[s.id] === "locked" ? "/sciezka" : `/krok/${s.id}` }] : [];
+    });
+    const lessonIds: IdLekcjiKursu[] = course?.modules.find((x) => x.id === m.module)?.lessons ?? [];
+    const lessons: MilestoneItem[] = lessonIds.map((id) => {
+      const l = LEKCJE[id];
+      // Lekcja z odblokowanego kroku prowadzi do kroku; z zablokowanego albo spoza ścieżki — do biblioteki kursów.
+      const step = stepOfLesson(id);
+      return { kind: "lesson" as const, id, title: l.title, video: !!l.video, done: lessonDone(state, id), href: step && st[step] !== "locked" ? `/krok/${step}` : "/lekcje#kursy" };
+    });
+    const extra: MilestoneItem[] = m.lokal ? [{ kind: "extra", id: "lokal", title: "Pierwszy lokal w kalkulatorze", done: (state.lokale?.length ?? 0) > 0, href: "/lokal" }] : [];
+    const items = [...steps, ...lessons, ...extra];
+    const done = items.filter((i) => i.done).length;
+    return {
+      ...m,
+      items,
+      done,
+      total: items.length,
+      pct: items.length ? Math.round((done / items.length) * 100) : 0,
+      complete: items.length > 0 && done === items.length,
+      stepsDone: steps.filter((i) => i.done).length,
+      stepsTotal: steps.length,
+      lessonsDone: lessons.filter((i) => i.done).length,
+      lessonsTotal: lessons.length,
+      current: !!cur && m.steps.includes(cur.id),
+    };
+  });
+}
+
+/** Najbliższy kamień: ten z bieżącym krokiem, a gdy go nie ma — niezdobyty z największym postępem. */
+export function nextMilestone(list: MilestoneProgress[]): MilestoneProgress | undefined {
+  const open = list.filter((m) => !m.complete);
+  return open.find((m) => m.current) ?? [...open].sort((a, b) => b.pct - a.pct || a.no - b.no)[0];
+}
+
+/** Postęp każdego etapu ścieżki: stany kroków i zaliczone lekcje (wykres „Ścieżka etap po etapie”). */
+export function phaseDetail(state: JourneyState) {
+  const st = stepStatuses(state);
+  const phases = [...new Set(STEPS.map((s) => s.phase))];
+  return phases.map((phase) => {
+    const steps = STEPS.filter((s) => s.phase === phase);
+    const lessons = [...new Map(steps.flatMap((s) => s.lessons).map((l) => [l.id, l])).values()];
+    return {
+      phase,
+      steps: steps.map((s) => ({ id: s.id, no: s.no, title: s.title, status: st[s.id] })),
+      done: steps.filter((s) => st[s.id] === "done").length,
+      draft: steps.filter((s) => st[s.id] === "draft").length,
+      total: steps.length,
+      lessonsDone: lessons.filter((l) => lessonDone(state, l.id)).length,
+      lessonsTotal: lessons.length,
+    };
+  });
 }

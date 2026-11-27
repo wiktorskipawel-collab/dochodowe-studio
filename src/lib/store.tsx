@@ -40,6 +40,7 @@ export type JourneyState = {
   demo?: boolean; // dane przykładowe z przycisku „Zobacz demo”
   preview?: boolean; // TRYB POKAZU (?pokaz=1): wszystkie kroki odblokowane na tym koncie. Przed startem usunąć albo ograniczyć.
   onboarded?: string; // kiedy ktoś zamknął powitanie z wideo / przewodnik po pulpicie (brak = pokaż przy wejściu)
+  toolIntro?: Record<string, string>; // okienko „Jak to działa”: klucz ("tool:<id>" albo "krok") → kiedy zamknięte (brak = pokaż)
   lokale?: Lokal[]; // kalkulator lokalu (/lokal): porównywane lokale
   najem?: Record<string, Record<string, NajemWpis>>; // warunki umowy najmu: id lokalu → id warunku → wpis
   profile: { name: string; email: string } | null; // PROTOTYP: konto w tej przeglądarce, docelowo Supabase Auth
@@ -97,6 +98,7 @@ type Ctx = {
   markWatched: (lessonIds: string[]) => void;
   setPreview: (on: boolean) => void;
   setOnboarded: () => void;
+  setToolIntro: (key: string) => void; // bez XP
   setLokale: (update: (cur: Lokal[]) => Lokal[]) => void; // bez XP
   setNajem: (update: (cur: Record<string, Record<string, NajemWpis>>) => Record<string, Record<string, NajemWpis>>) => void; // bez XP
   reset: () => void;
@@ -277,6 +279,7 @@ export function JourneyProvider({ children }: { children: ReactNode }) {
       },
       setPreview: (on) => setState((cur) => ({ ...cur, preview: on })),
       setOnboarded: () => setState((cur) => (cur.onboarded ? cur : { ...cur, onboarded: new Date().toISOString() })),
+      setToolIntro: (key) => setState((cur) => (cur.toolIntro?.[key] ? cur : { ...cur, toolIntro: { ...cur.toolIntro, [key]: new Date().toISOString() } })),
       setLokale: (update) => setState((cur) => ({ ...cur, lokale: update(cur.lokale ?? []) })),
       setNajem: (update) => setState((cur) => ({ ...cur, najem: update(cur.najem ?? {}) })),
       reset: () => setState(EMPTY),

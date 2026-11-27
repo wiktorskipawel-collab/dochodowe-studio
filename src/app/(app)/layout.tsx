@@ -4,6 +4,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Gate } from "@/components/Gate";
 import { AssistantHost } from "@/components/AssistantStage";
 import { PreviewBanner } from "@/components/PreviewBanner";
+import { CommandPalette } from "@/components/CommandPalette";
 
 export default function AppLayout({ children }: LayoutProps<"/">) {
   return (
@@ -15,6 +16,7 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
           <div className="@container/main flex flex-1 flex-col gap-5 p-4 pb-28 lg:p-6 lg:pb-28"><PreviewBanner />{children}</div>
         </SidebarInset>
         <AssistantHost />
+        <CommandPalette />
       </SidebarProvider>
     </Gate>
   );

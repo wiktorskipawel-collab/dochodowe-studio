@@ -41,6 +41,7 @@ Od tej chwili przycisk „Kontynuuj z Google” otwiera wybór konta Google i wr
    - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
    - `COOKIE_SECRET` (skopiuj z `.env.local`, min. 32 znaki)
    - `OPENROUTER_API_KEY` (klucz platformy z openrouter.ai, z limitem wydatków) i `NEXT_PUBLIC_AI_MODEL` (np. `deepseek/deepseek-v3.2`) — asystent działa wtedy na koszt platformy, uczestnik niczego nie łączy
+   - opcjonalnie `NEXT_PUBLIC_AI_VISION_MODEL` (zdjęcia w czacie) i `NEXT_PUBLIC_AI_AUDIO_MODEL` (transkrypcja nagrań); puste = domyślne modele Gemini z `src/lib/models.ts`. Dyktowanie głosem korzysta z rozpoznawania mowy przeglądarki (Chrome/Edge wysyłają głos do Google/Microsoft).
    - opcjonalnie `NEXT_PUBLIC_BARTEK_KALENDARZ` (link do umawiania rozmów 30 min) i `NEXT_PUBLIC_WIDEO_POWITALNE` (adres wideo powitalnego)
    - opcjonalnie `SITE_PASSWORD` — hasło na całą stronę na czas testów
 3. **Deploy**. Region serwera: Frankfurt (`vercel.json`).

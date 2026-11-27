@@ -62,7 +62,8 @@ export function demoState(): JourneyState {
     demo: true,
     profile: { name: "Kasia (demo)", email: "demo@dochodowe.studio" },
     ai: { mode: "manual", model: "" },
-    survey: { studio: "Studio Demo, Poznań", etap: "dziala", model: "trenerzy", cel: "grafik", zrodla: "polecenia", problem: "zgloszenia", waluta: "oba", godziny: "5", materialy: "oferta", poziom: "sredni" },
+    // Odpowiedzi według ankiety v3 (segment, rozliczenia, grafik, przedłużenia, poduszka).
+    survey: { studio: "Studio Demo, miasto ok. 500 tys. mieszkańców", segment: "bez-systemu", model: "trenerzy", rozliczenia: "stawka", grafik: "50-80", przedluzenia: "polowa", "cel-liczby": "8 nowych klientów miesięcznie, 25 tys. zł zysku (demo)", poduszka: "do3", zrodla: "polecenia", problem: "zgloszenia", kontakt: "dzien", konsultacja: "nie-licze", reklamy: "do1k", waluta: "oba", godziny: "5", "czerwone-linie": "nie chcę się nagrywać (demo)", poziom: "sredni" },
     stage: "bez-systemu",
     pathAccepted: true,
     chats,

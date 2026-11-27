@@ -5,6 +5,8 @@ export type Lesson = {
   title: string;
   source: string;
   video?: string; // adres odtwarzacza do osadzenia (Loom / YouTube / Bunny Stream)
+  thumb?: string; // miniatura filmu (zwykle z lekcji kursu przez ref: wideoLekcji w src/lib/kursy.ts)
+  duration?: number; // czas nagrania w sekundach (jw.)
   skool?: string; // link do lekcji na Skool („Otwórz na Skool”)
   attachments?: string[]; // nazwy materiałów do lekcji (pliki są na Skool)
   opis?: string; // 1 zdanie o lekcji
@@ -25,6 +27,7 @@ export type Step = {
   exitCriteria: string[]; // kiedy krok jest skończony
   lessons: Lesson[];
   needs: string[]; // dokumenty, które asystent dostaje jako kontekst
+  unlockAfter?: string; // boczna odnoga: krok otwiera się po zatwierdzeniu kroku o tym id i nie blokuje kolejnych (np. „zespol”)
 };
 
 export type SurveyQuestion = {

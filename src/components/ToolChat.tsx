@@ -4,12 +4,15 @@
 // plus: kopiowanie odpowiedzi jednym kliknięciem, osobne „Kopiuj wiadomość do klienta”, „Nowa rozmowa”,
 // prosty podgląd formatowania (nagłówki, wypunktowania, pogrubienia) bez wstawiania HTML.
 // Asystent jest zawsze oznaczony jako AI (AI Act, art. 50): plakietka „AI” na awatarze i podpis „asystent AI”.
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+// Wiadomość: tekst, dyktowanie, zdjęcia, nagranie i transkrypcja (ChatComposer). Zdjęcia idą tylko z bieżącą wiadomością;
+// miniatury widać do końca wizyty (sentPics), a w zapisanej rozmowie zostaje dopisek, że były.
+// Pierwsze otwarcie narzędzia: okienko „Jak to działa” (ToolIntro), także w panelu bocznym kroku.
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { motion } from "motion/react";
-import { Send, LoaderCircle, Copy, Check, RotateCcw, Info, MessageSquareText } from "lucide-react";
+import { Copy, Check, RotateCcw, MessageSquareText } from "lucide-react";
 import { toast } from "sonner";
 import { useJourney, type ChatMessage } from "@/lib/store";
-import type { ToolMeta } from "@/lib/tools";
+import { introKey, type ToolMeta } from "@/lib/tools-public";
 import { Message, MessageAvatar, MessageContent, MessageHeader } from "@/components/ui/message";
 import { Bubble, BubbleContent } from "@/components/ui/bubble";
 import { Marker, MarkerContent, MarkerIcon } from "@/components/ui/marker";
@@ -18,22 +21,26 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { AssistantAvatar } from "@/components/Assistant";
 import { toolIcon } from "@/components/ToolIcon";
 import { Pill } from "@/components/ui";
-
-const MAX_CHARS = 6000; // jak LIMITS.maxCharsPerMessage w src/lib/ai.ts (serwer i tak przycina)
+import { ChatComposer, UserMessageBody, composeUserMessage, type ImageDraft } from "@/components/ChatComposer";
+import { IntroDialog, useIntro } from "@/components/ToolIntro";
 
 export type ToolContext = { stage?: string; documents: { title: string; content: string }[] };
 
-export function ToolChat({ tool, provider, model, messages, onChange, context }: {
+export function ToolChat({ tool, provider, model, messages, onChange, context, compact = false }: {
   tool: ToolMeta;
   provider: string;
   model: string;
   messages: ChatMessage[];
   onChange: (m: ChatMessage[]) => void;
   context: ToolContext;
+  compact?: boolean; // w panelu bocznym kroku: bez osobnego nagłówka (nazwa jest w panelu)
 }) {
   const { state } = useJourney();
   const Icon = toolIcon(tool.icon);
+  const intro = useIntro(introKey(tool.id));
   const [input, setInput] = useState("");
+  const [images, setImages] = useState<ImageDraft[]>([]);
+  const [sentPics, setSentPics] = useState<Record<number, string[]>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
@@ -50,14 +57,17 @@ export function ToolChat({ tool, provider, model, messages, onChange, context }:
     if (copiedTimer.current) clearTimeout(copiedTimer.current);
   }, []);
 
-  async function send(e?: FormEvent) {
-    e?.preventDefault();
-    const content = input.trim();
-    if (!content || busy) return;
+  async function send() {
+    const text = input;
+    const pics = images;
+    if ((!text.trim() && !pics.length) || busy) return;
+    const { stored, request } = composeUserMessage(text, pics);
     setError(null);
     setConfirmReset(false);
     setInput("");
-    const history: ChatMessage[] = [...messages, { role: "user", content }];
+    setImages([]);
+    const history: ChatMessage[] = [...messages, { role: "user", content: stored }];
+    if (pics.length) setSentPics((cur) => ({ ...cur, [history.length]: pics.map((p) => p.url) })); // indeks w `shown` (powitanie = 0)
     onChange([...history, { role: "assistant", content: "" }]);
     setBusy(true);
     const ctrl = new AbortController();
@@ -66,7 +76,7 @@ export function ToolChat({ tool, provider, model, messages, onChange, context }:
       const res = await fetch("/api/assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider, model, tool: tool.id, messages: history, context }),
+        body: JSON.stringify({ provider, model, tool: tool.id, messages: [...messages, request], context }),
         signal: ctrl.signal,
       });
       if (!res.ok || !res.body) throw new Error(await res.text());
@@ -85,8 +95,9 @@ export function ToolChat({ tool, provider, model, messages, onChange, context }:
     } catch (err) {
       if (ctrl.signal.aborted) return; // „Nowa rozmowa” albo wyjście ze strony
       setError(err instanceof Error && err.message ? err.message : "Brak połączenia z serwerem.");
-      onChange(messages); // wiadomość wraca do pola, można wysłać jeszcze raz
-      setInput(content);
+      onChange(messages); // wiadomość (i zdjęcia) wracają do pola, można wysłać jeszcze raz
+      setInput(text);
+      setImages(pics);
     } finally {
       if (abortRef.current === ctrl) abortRef.current = null;
       setBusy(false);
@@ -99,6 +110,8 @@ export function ToolChat({ tool, provider, model, messages, onChange, context }:
     setBusy(false);
     setError(null);
     setInput("");
+    setImages([]);
+    setSentPics({});
     setConfirmReset(false);
     onChange([]);
     fieldRef.current?.focus();
@@ -130,15 +143,19 @@ export function ToolChat({ tool, provider, model, messages, onChange, context }:
 
   return (
     <>
-      {/* Nagłówek rozmowy: narzędzie, oznaczenie AI, „Nowa rozmowa” */}
-      <div className="glass-card flex flex-wrap items-center justify-between gap-3 rounded-2xl p-3 pl-4">
-        <div className="flex min-w-0 items-center gap-3">
-          <AssistantAvatar size={40} icon={Icon} talking={busy} />
-          <div className="min-w-0">
-            <p className="truncate font-semibold">{tool.title}</p>
-            <p className="text-xs text-white/60">Asystent AI Dochodowego Studia</p>
+      {/* Nagłówek rozmowy: narzędzie, oznaczenie AI, „Nowa rozmowa” (w panelu bocznym nazwa jest już w nagłówku panelu) */}
+      <div className={compact ? "flex flex-wrap items-center justify-between gap-3" : "glass-card flex flex-wrap items-center justify-between gap-3 rounded-2xl p-3 pl-4"}>
+        {compact ? (
+          <p className="text-xs text-white/60">Asystent AI Dochodowego Studia</p>
+        ) : (
+          <div className="flex min-w-0 items-center gap-3">
+            <AssistantAvatar size={40} icon={Icon} talking={busy} />
+            <div className="min-w-0">
+              <p className="truncate font-semibold">{tool.title}</p>
+              <p className="text-xs text-white/60">Asystent AI Dochodowego Studia</p>
+            </div>
           </div>
-        </div>
+        )}
         {messages.length ? (
           confirmReset ? (
             <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Potwierdzenie nowej rozmowy">
@@ -192,7 +209,7 @@ export function ToolChat({ tool, provider, model, messages, onChange, context }:
                 <Message align="end">
                   <MessageAvatar><Avatar className="size-9"><AvatarFallback className="bg-green-strong text-xs font-bold text-white">{initials}</AvatarFallback></Avatar></MessageAvatar>
                   <MessageContent>
-                    <Bubble><BubbleContent className="max-h-80 overflow-y-auto whitespace-pre-wrap leading-relaxed">{m.content}</BubbleContent></Bubble>
+                    <Bubble><BubbleContent className="max-h-80 overflow-y-auto"><UserMessageBody text={m.content} pictures={sentPics[i]} /></BubbleContent></Bubble>
                   </MessageContent>
                 </Message>
               )}
@@ -215,42 +232,22 @@ export function ToolChat({ tool, provider, model, messages, onChange, context }:
 
       {error ? <p role="alert" className="rounded-xl border border-red-400/40 bg-red-400/10 px-4 py-3 text-sm text-red-200">{error}</p> : null}
 
-      <form onSubmit={send} className="glass-card flex flex-col gap-1 rounded-2xl p-2">
-        <div className="flex items-end gap-2">
-          <label htmlFor="tool-msg" className="sr-only">Twoja wiadomość do asystenta</label>
-          <textarea
-            id="tool-msg"
-            ref={fieldRef}
-            value={input}
-            rows={3}
-            maxLength={MAX_CHARS}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              // Na komputerze Enter wysyła, Shift+Enter to nowa linia. Na telefonie Enter zawsze robi nową linię.
-              if (e.key !== "Enter" || e.shiftKey || e.nativeEvent.isComposing) return;
-              if (window.matchMedia("(pointer: coarse)").matches) return;
-              e.preventDefault();
-              e.currentTarget.form?.requestSubmit();
-            }}
-            placeholder={tool.placeholder}
-            className="max-h-72 min-h-11 flex-1 resize-y rounded-xl bg-transparent px-3 py-2 text-white placeholder:text-white/50 focus:outline-none"
-          />
-          <button type="submit" disabled={busy || !input.trim()} aria-label="Wyślij" className="grid size-11 shrink-0 place-items-center rounded-xl bg-brand text-brand-ink disabled:opacity-40">
-            {busy ? <LoaderCircle className="size-5 animate-spin" aria-hidden="true" /> : <Send className="size-5" aria-hidden="true" />}
-          </button>
-        </div>
-        <div className="flex flex-wrap items-center justify-between gap-2 px-3 pb-1 text-xs text-white/55">
-          <span>Na komputerze: Enter wysyła, Shift+Enter to nowa linia.</span>
-          {input.length > MAX_CHARS - 1500 ? <span className={input.length >= MAX_CHARS ? "text-amber-300" : ""}>{input.length}/{MAX_CHARS} znaków</span> : null}
-        </div>
-      </form>
+      <ChatComposer
+        id={`tool-msg-${tool.id}`}
+        label="Twoja wiadomość do asystenta"
+        value={input}
+        setValue={setInput}
+        images={images}
+        setImages={setImages}
+        onSubmit={() => void send()}
+        busy={busy}
+        maxChars={tool.maxChars}
+        placeholder={tool.placeholder}
+        fieldRef={fieldRef}
+        features={{ images: tool.inputs.includes("zdjecia"), audio: tool.inputs.includes("nagranie"), transcript: tool.inputs.includes("transkrypcja") }}
+      />
 
-      {tool.pasteOnly ? (
-        <p className="flex gap-2 text-sm text-white/70">
-          <Info className="mt-0.5 size-4 shrink-0 text-brand" aria-hidden="true" />
-          Asystent czyta tylko tekst, nie zrzuty ekranu. Zaznacz rozmowę albo tabelę, skopiuj (Ctrl+C, na telefonie: przytrzymaj i „Kopiuj”) i wklej tutaj.
-        </p>
-      ) : null}
+      <IntroDialog open={intro.open} onClose={intro.close} eyebrow="Jak to działa" title={tool.title} intro={tool.intro} icon={Icon} />
     </>
   );
 }

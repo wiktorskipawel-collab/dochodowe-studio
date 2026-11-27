@@ -9,7 +9,7 @@ import { useGSAP } from "@gsap/react";
 import { motion, useReducedMotion } from "motion/react";
 import {
   Check, Lock, FolderOpen, Stethoscope, Dna, UserRound, Gem, Wallet, Target, ShieldCheck, CalendarRange, Clapperboard,
-  ChartColumn, Sparkles, CircleDot, PhoneCall, HeartHandshake, type LucideIcon,
+  ChartColumn, Sparkles, CircleDot, PhoneCall, HeartHandshake, Users, type LucideIcon,
 } from "lucide-react";
 import { VW, VH, TERRAIN, layout } from "@/lib/terrain";
 import type { Step, StepStatus } from "@/lib/journey-types";
@@ -17,7 +17,7 @@ import type { Step, StepStatus } from "@/lib/journey-types";
 export const STEP_ICON: Record<string, LucideIcon> = {
   materialy: FolderOpen, diagnoza: Stethoscope, dna: Dna, awatar: UserRound, oferta: Gem, "cel-budzet": Wallet, sprzedaz: PhoneCall,
   strategia: Target, gotowosc: ShieldCheck, "materialy-lejka": Clapperboard, plan: CalendarRange, wyniki: ChartColumn, okazje: Sparkles,
-  utrzymanie: HeartHandshake,
+  utrzymanie: HeartHandshake, zespol: Users,
 };
 /** Ikona kroku (z mapy STEP_ICON). */
 export function StepIcon({ id, className }: { id: string; className?: string }) {
@@ -28,7 +28,7 @@ export function StepIcon({ id, className }: { id: string; className?: string }) 
 const SHORT: Record<string, string> = {
   materialy: "Materiały", diagnoza: "Diagnoza", dna: "DNA studia", awatar: "Awatar", oferta: "Oferta", "cel-budzet": "Cel i budżet",
   sprzedaz: "Obsługa zgłoszeń", strategia: "Strategia", gotowosc: "Gotowość", "materialy-lejka": "Gotowce", plan: "Plan",
-  wyniki: "Przegląd", okazje: "Okazje", utrzymanie: "Utrzymanie",
+  wyniki: "Przegląd", okazje: "Okazje", utrzymanie: "Utrzymanie", zespol: "Zespół",
 };
 export const shortTitle = (s: Step) => SHORT[s.id] ?? s.title;
 export const phaseName = (phase: string) => phase.replace(/\s*\(.*\)$/, "");
@@ -182,7 +182,7 @@ export function PathTerrain({ steps, statuses, currentId }: Props) {
               {/* podpowiedź po najechaniu / fokusie */}
               <span aria-hidden="true" className="pointer-events-none absolute left-1/2 top-[calc(100%+10px)] z-20 w-56 -translate-x-1/2 rounded-xl border border-white/15 bg-[#081409]/95 p-3 text-left text-xs leading-snug text-white/80 opacity-0 shadow-xl transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100">
                 <strong className="block text-sm text-white">{s.no}. {s.title}</strong>
-                {st === "locked" ? "Odblokuje się po zatwierdzeniu poprzedniego kroku." : s.goal}
+                {st === "locked" ? (s.unlockAfter ? `Otworzy się po zatwierdzeniu kroku „${steps.find((x) => x.id === s.unlockAfter)?.title ?? s.unlockAfter}”.` : "Odblokuje się po zatwierdzeniu poprzedniego kroku.") : s.goal}
               </span>
             </>
           );

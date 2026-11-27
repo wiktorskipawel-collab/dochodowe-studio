@@ -144,7 +144,7 @@ function Tile({ step: s, status, current, prev, offPath }: { step: Step; status:
           {offPath ? <span>Poza Twoją ścieżką na teraz</span> : null}
         </span>
         {locked ? (
-          <span className="inline-flex items-center gap-1.5 text-xs text-white/50"><Lock className="size-3.5" aria-hidden="true" />{prev ? `Po kroku ${prev.no}` : "Później"}</span>
+          <span className="inline-flex items-center gap-1.5 text-xs text-white/50"><Lock className="size-3.5" aria-hidden="true" />{s.unlockAfter ? `Po kroku ${STEPS.find((x) => x.id === s.unlockAfter)?.no ?? ""}` : prev ? `Po kroku ${prev.no}` : "Później"}</span>
         ) : (
           <span className={`inline-flex min-h-11 items-center gap-2 rounded-xl px-4 text-sm font-bold transition group-hover:gap-3 ${current ? "bg-orange text-neutral-950" : status === "done" ? "border border-white/20 text-white" : "bg-brand text-brand-ink"}`}>
             {status === "done" ? "Otwórz" : status === "draft" ? "Wracam" : "Zaczynam"}<ArrowRight className="size-4" aria-hidden="true" />

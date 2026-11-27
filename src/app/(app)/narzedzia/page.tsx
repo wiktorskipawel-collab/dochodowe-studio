@@ -9,7 +9,7 @@ export default function Narzedzia() {
   return (
     <div className="flex flex-col gap-5">
       <PageHeader eyebrow="Szybkie akcje" title="Zrób jedną rzecz, bez przechodzenia całej ścieżki">
-        Każde narzędzie to osobna rozmowa z asystentem AI na metodyce Dochodowego Studia. Korzysta z Twoich zatwierdzonych dokumentów (DNA, awatar, oferta), więc nie zaczynasz od zera.
+        Każde narzędzie to osobna rozmowa z asystentem AI na metodyce Dochodowego Studia. Korzysta z Twoich zatwierdzonych dokumentów (DNA, awatar, oferta), więc nie zaczynasz od zera. Możesz pisać, dyktować, dodać zrzut ekranu albo nagranie rozmowy. Do każdego narzędzia dojdziesz też skrótem Ctrl+K (na Macu ⌘K).
       </PageHeader>
       <Tools groups={toolGroups()} />
       <p className="text-xs text-white/60">Odpowiedzi tworzy sztuczna inteligencja (AI). Sprawdź każdy tekst, zanim wyślesz go klientowi. Ważne decyzje podejmujesz Ty.</p>

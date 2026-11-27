@@ -1,7 +1,9 @@
 "use client";
 
-// Wykresy pulpitu uczestnika. Paleta sprawdzona walidatorem dataviz (tryb ciemny):
-// zrobione #4fb52a · w trakcie #bd8222 · do zrobienia #4b8fdb · tło toru rgba(255,255,255,.09) · złota rampa aktywności.
+// Wykresy pulpitu uczestnika: klocki wspólne (karta z tabelą danych, pierścień, pasek segmentowy, mierniki, mapa aktywności).
+// Uwaga (walidator dataviz, 2026-11-27): para --viz-done #4fb52a / --viz-progress #bd8222 nie przechodzi testu daltonizmu
+// (deutan ΔE 3,0) — do stanów kroków pulpit używa --viz-st-* (globals.css) i zawsze ikony. Tło toru rgba(255,255,255,.09),
+// złota rampa aktywności (--heat-1…5).
 import type { ReactNode } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";

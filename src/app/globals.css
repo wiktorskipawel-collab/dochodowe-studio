@@ -288,3 +288,11 @@ body::before {
     @apply font-sans;
   }
 }
+/* Pulpit: stany kroków (walidator dataviz, tryb ciemny, tło #0f1f13: CVD ΔE ≥ 11,9, widzenie normalne ≥ 22,8).
+   To paleta STANÓW, nie kategorii: złoto „w trakcie” jest jaśniejsze od pasma kategorii, żeby odróżniało się od zieleni
+   także przy daltonizmie; i tak zawsze z ikoną (✓ zatwierdzony, ołówek w trakcie, numer do zrobienia, kłódka później). */
+.dark {
+  --viz-st-done: #3f9e22;
+  --viz-st-draft: #e0b552;
+  --viz-st-todo: #4b8fdb;
+}

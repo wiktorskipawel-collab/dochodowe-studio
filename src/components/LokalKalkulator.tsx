@@ -6,12 +6,13 @@
 // Dane i obliczenia: src/app/(app)/lokal/dane.ts. Zapis: store (`lokale`, `najem`), bez XP.
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Building2, Plus, Pencil, Trash2, FileSpreadsheet, Trophy, Wallet, MapPin, ChevronRight, TriangleAlert, Lightbulb, Star, Scale } from "lucide-react";
+import { Building2, Plus, Pencil, Trash2, FileSpreadsheet, Trophy, Wallet, MapPin, ChevronRight, TriangleAlert, Lightbulb, Star, Scale, Sparkles } from "lucide-react";
 import { useJourney, type Lokal } from "@/lib/store";
 import { downloadText } from "@/lib/download";
 import { Pill } from "@/components/ui";
 import { LokalFormularz } from "@/components/LokalFormularz";
 import { LokalNajem } from "@/components/LokalNajem";
+import { LokalZOgloszenia } from "@/components/LokalZOgloszenia";
 import { Gwiazdki, POZIOM_STYL, UdzialChip } from "@/components/LokalWspolne";
 import { KOLEJNOSC, NA_CO_PATRZEC, PRZYCHODY, WARUNKI_WSZYSTKIE, doCsv, liczba, nowyLokal, policz, poziom, proc, tys, wyroznienia, zl, type Wynik } from "@/app/(app)/lokal/dane";
 
@@ -21,15 +22,20 @@ export function LokalKalkulator() {
   const { ready, state, setLokale, setNajem } = useJourney();
   const [zakladka, setZakladka] = useState<Zakladka>("porownanie");
   const [edytowany, setEdytowany] = useState<string | null>(null);
+  const [zOgloszenia, setZOgloszenia] = useState(false);
   const edytor = useRef<HTMLDivElement>(null);
+  const importer = useRef<HTMLDivElement>(null);
 
-  // po otwarciu formularza przewiń do niego
-  useEffect(() => {
-    if (!edytowany) return;
+  // po otwarciu formularza (albo „Dodaj z ogłoszenia”) przewiń do niego
+  const przewin = (cel: React.RefObject<HTMLDivElement | null>) => {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const t = setTimeout(() => edytor.current?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" }), 60);
+    cel.current?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+  };
+  useEffect(() => {
+    if (!edytowany && !zOgloszenia) return;
+    const t = setTimeout(() => przewin(zOgloszenia ? importer : edytor), 60);
     return () => clearTimeout(t);
-  }, [edytowany]);
+  }, [edytowany, zOgloszenia]);
 
   if (!ready) return <p className="text-white/70">Wczytuję…</p>;
   const lokale = state.lokale ?? [];
@@ -41,7 +47,24 @@ export function LokalKalkulator() {
   const dodaj = () => {
     const l = nowyLokal(lokale);
     setLokale((cur) => [...cur, l]);
+    setZOgloszenia(false);
     setEdytowany(l.id);
+  };
+  const otworzZOgloszenia = () => {
+    setEdytowany(null);
+    setZOgloszenia(true);
+  };
+  // lokal z ogłoszenia: pola sprawdzone w podglądzie, potem pełny formularz do uzupełnienia reszty
+  const dodajZOgloszenia = (dane: Record<string, string>) => {
+    const l = nowyLokal(lokale);
+    const nowy = { ...l, dane: { ...l.dane, ...dane } };
+    setLokale((cur) => [...cur, nowy]);
+    setZOgloszenia(false);
+    setEdytowany(nowy.id);
+  };
+  const edytuj = (id: string) => {
+    setZOgloszenia(false);
+    setEdytowany(id);
   };
   const usun = (id: string) => {
     setLokale((cur) => cur.filter((l) => l.id !== id));
@@ -89,12 +112,26 @@ export function LokalKalkulator() {
                     className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/20 px-4 text-sm font-semibold hover:bg-white/10 disabled:opacity-40">
                     <FileSpreadsheet className="size-4" aria-hidden="true" />Pobierz do Excela
                   </button>
+                  <button type="button" onClick={otworzZOgloszenia} aria-expanded={zOgloszenia}
+                    className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-brand/50 px-4 text-sm font-semibold text-white hover:bg-brand/10">
+                    <Sparkles className="size-4 text-brand" aria-hidden="true" />Dodaj z ogłoszenia
+                  </button>
                   <button type="button" onClick={dodaj}
                     className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-brand-ink hover:brightness-105">
                     <Plus className="size-4" aria-hidden="true" />Dodaj lokal
                   </button>
                 </div>
               </div>
+
+              {/* po dodaniu z ogłoszenia panel znika, a formularz przesuwa się w górę — przewijamy jeszcze raz, gdy panel zniknie */}
+              <AnimatePresence onExitComplete={() => { if (edytowany) przewin(edytor); }}>
+                {zOgloszenia ? (
+                  <motion.div ref={importer} key="z-ogloszenia" className="scroll-mt-24" initial={{ opacity: 0, y: 16, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -12, scale: 0.98 }} transition={{ type: "spring", stiffness: 300, damping: 30 }}>
+                    <LokalZOgloszenia onDodaj={dodajZOgloszenia} onClose={() => setZOgloszenia(false)} />
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
 
               <AnimatePresence>
                 {edyt ? (
@@ -110,19 +147,25 @@ export function LokalKalkulator() {
                   <AnimatePresence initial={false}>
                     {lokale.map((l) => (
                       <LokalKarta key={l.id} lokal={l} wynik={policz(l)} najtanszy={najtanszy === l.id} najlepszy={najlepszy === l.id} aktywny={edytowany === l.id}
-                        onEdit={() => setEdytowany(l.id)} onDelete={() => usun(l.id)} />
+                        onEdit={() => edytuj(l.id)} onDelete={() => usun(l.id)} />
                     ))}
                   </AnimatePresence>
                 </ul>
-              ) : (
+              ) : zOgloszenia ? null : (
                 <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="glass-card grid place-items-center rounded-3xl p-8 text-center md:p-12">
                   <div className="flex max-w-md flex-col items-center gap-3">
                     <span className="grid size-16 place-items-center rounded-2xl bg-brand/15 text-brand"><Building2 className="size-8" aria-hidden="true" /></span>
                     <p className="text-xl font-bold">Dodaj pierwszy lokal</p>
-                    <p className="text-white/65">Wpisz czynsz, opłaty i metraż sali. Najlepiej porównać co najmniej 2–3 lokale, zanim zaczniesz negocjować.</p>
-                    <button type="button" onClick={dodaj} className="mt-2 inline-flex min-h-12 items-center gap-2 rounded-2xl bg-brand px-6 font-bold text-brand-ink shadow-[0_6px_0_0_rgba(0,0,0,.35)]">
-                      <Plus className="size-5" aria-hidden="true" />Dodaj lokal
-                    </button>
+                    <p className="text-white/65">Wpisz czynsz, opłaty i metraż sali albo wklej ogłoszenie, a AI wypełni pola. Najlepiej porównać co najmniej 2–3 lokale, zanim zaczniesz negocjować.</p>
+                    <div className="mt-2 flex flex-wrap justify-center gap-2">
+                      <button type="button" onClick={dodaj} className="inline-flex min-h-12 items-center gap-2 rounded-2xl bg-brand px-6 font-bold text-brand-ink shadow-[0_6px_0_0_rgba(0,0,0,.35)]">
+                        <Plus className="size-5" aria-hidden="true" />Dodaj lokal
+                      </button>
+                      <button type="button" onClick={otworzZOgloszenia} aria-expanded={zOgloszenia}
+                        className="inline-flex min-h-12 items-center gap-2 rounded-2xl border border-brand/50 px-5 font-bold hover:bg-brand/10">
+                        <Sparkles className="size-5 text-brand" aria-hidden="true" />Dodaj z ogłoszenia
+                      </button>
+                    </div>
                   </div>
                 </motion.div>
               )}

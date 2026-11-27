@@ -118,7 +118,12 @@ export function JourneyProvider({ children }: { children: ReactNode }) {
       if (error) setCloud("error");
       const remote = data?.state as Partial<JourneyState> | undefined;
       if (remote?.version === 1) setState({ ...EMPTY, ...remote, demo: false, profile });
-      else setState(local && !local.demo && local.profile?.email === profile.email ? { ...local, profile } : { ...EMPTY, profile });
+      else if (local && !local.demo && local.profile?.email === profile.email) setState({ ...local, profile });
+      else {
+        // Konto bez zapisanej ścieżki = nowa (albo wyzerowana) osoba: pełne pierwsze powitanie Bartka.
+        if (!error) forgetHello(profile.email, null);
+        setState({ ...EMPTY, profile });
+      }
       setCloud(error ? "error" : "saved");
       setReady(true);
     };

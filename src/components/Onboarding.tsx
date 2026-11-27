@@ -9,6 +9,7 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ArrowLeft, ArrowRight, Compass, PlayCircle, Route, FileDown, MessageCircle, X } from "lucide-react";
 import { useJourney } from "@/lib/store";
+import { WelcomeIntro } from "@/components/WelcomeIntro";
 import { currentStep } from "@/lib/journey";
 
 const WELCOME_VIDEO = process.env.NEXT_PUBLIC_WIDEO_POWITALNE ?? "";
@@ -85,7 +86,13 @@ export function Onboarding() {
 function Welcome({ name, onTour, onSkip }: { name: string; onTour: () => void; onSkip: () => void }) {
   const titleId = useId();
   const primary = useRef<HTMLButtonElement>(null);
+  const videoCta = useRef<HTMLButtonElement>(null);
+  const [screen, setScreen] = useState<"intro" | "video">("intro");
   const first = name.trim().split(/\s+/)[0];
+
+  useEffect(() => {
+    if (screen === "video") videoCta.current?.focus({ preventScroll: true });
+  }, [screen]);
 
   useEffect(() => {
     primary.current?.focus({ preventScroll: true });
@@ -109,46 +116,64 @@ function Welcome({ name, onTour, onSkip }: { name: string; onTour: () => void; o
         <button type="button" onClick={onSkip} aria-label="Zamknij" className="absolute right-3 top-3 z-10 grid size-11 place-items-center rounded-xl text-white/60 hover:bg-white/10 hover:text-white">
           <X className="size-4" aria-hidden="true" />
         </button>
-        <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-brand">Witaj w Dochodowym Studiu</p>
-        <h2 id={titleId} className="mt-1 pr-10 text-2xl font-extrabold md:text-3xl">{first ? `${first}, zanim zaczniesz: ` : "Zanim zaczniesz: "}2 minuty od Bartka</h2>
-
-        <div className="mt-5 overflow-hidden rounded-2xl border border-white/10 bg-black">
-          {WELCOME_VIDEO ? (
-            <iframe src={WELCOME_VIDEO} title="Wideo powitalne od Bartka" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" className="aspect-video w-full" />
-          ) : (
-            // DO ZATWIERDZENIA: nagranie powitalne Bartka (adres w NEXT_PUBLIC_WIDEO_POWITALNE)
-            <div className="relative grid aspect-video w-full place-items-center bg-[radial-gradient(60%_80%_at_50%_40%,rgba(46,140,30,.35),transparent_70%),linear-gradient(180deg,#0b1a0d,#030805)] p-6 text-center">
-              <div className="flex flex-col items-center gap-3">
-                <span className="relative grid size-20 place-items-center rounded-full bg-brand text-brand-ink shadow-[0_0_60px_-10px_rgba(114,196,28,.8)]">
-                  <motion.span aria-hidden="true" className="absolute inset-0 rounded-full border-2 border-brand" animate={{ scale: [1, 1.6], opacity: [0.8, 0] }} transition={{ duration: 1.8, repeat: Infinity }} />
-                  <PlayCircle className="size-10" aria-hidden="true" />
-                </span>
-                <p className="max-w-md text-sm text-white/75">Tu będzie wideo od Bartka: kim jest, jak działa ścieżka i czego od Ciebie oczekuje. Nagranie w przygotowaniu.</p>
+        <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-brand">Witaj w Dochodowym Studiu{first ? `, ${first}` : ""}</p>
+        <AnimatePresence mode="wait" initial={false}>
+          {screen === "intro" ? (
+            <motion.div key="intro" initial={{ opacity: 0, x: -24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40, transition: { duration: 0.25 } }}>
+              <h2 id={titleId} className="sr-only">Witaj w Dochodowym Studiu</h2>
+              <WelcomeIntro />
+              <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
+                <button type="button" onClick={onSkip} className="min-h-11 rounded-xl px-4 text-sm font-semibold text-white/70 hover:bg-white/10 hover:text-white">Pomiń</button>
+                <button ref={primary} type="button" onClick={() => setScreen("video")}
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-brand px-5 font-bold text-brand-ink shadow-[0_12px_30px_-12px_rgba(114,196,28,.6)] hover:brightness-110">
+                  Dalej<ArrowRight className="size-4" aria-hidden="true" />
+                </button>
               </div>
+            </motion.div>
+          ) : (
+            <motion.div key="video" initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} transition={{ type: "spring", stiffness: 260, damping: 28 }}>
+            <h2 id={titleId} className="mt-1 pr-10 text-2xl font-extrabold md:text-3xl">{first ? `${first}, zanim zaczniesz: ` : "Zanim zaczniesz: "}2 minuty od Bartka</h2>
+
+            <div className="mt-5 overflow-hidden rounded-2xl border border-white/10 bg-black">
+              {WELCOME_VIDEO ? (
+                <iframe src={WELCOME_VIDEO} title="Wideo powitalne od Bartka" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" className="aspect-video w-full" />
+              ) : (
+                // DO ZATWIERDZENIA: nagranie powitalne Bartka (adres w NEXT_PUBLIC_WIDEO_POWITALNE)
+                <div className="relative grid aspect-video w-full place-items-center bg-[radial-gradient(60%_80%_at_50%_40%,rgba(46,140,30,.35),transparent_70%),linear-gradient(180deg,#0b1a0d,#030805)] p-6 text-center">
+                  <div className="flex flex-col items-center gap-3">
+                    <span className="relative grid size-20 place-items-center rounded-full bg-brand text-brand-ink shadow-[0_0_60px_-10px_rgba(114,196,28,.8)]">
+                      <motion.span aria-hidden="true" className="absolute inset-0 rounded-full border-2 border-brand" animate={{ scale: [1, 1.6], opacity: [0.8, 0] }} transition={{ duration: 1.8, repeat: Infinity }} />
+                      <PlayCircle className="size-10" aria-hidden="true" />
+                    </span>
+                    <p className="max-w-md text-sm text-white/75">Tu będzie wideo od Bartka: kim jest, jak działa ścieżka i czego od Ciebie oczekuje. Nagranie w przygotowaniu.</p>
+                  </div>
+                </div>
+              )}
             </div>
+
+            <ul className="mt-5 grid gap-3 text-sm sm:grid-cols-3">
+              {[
+                { icon: Route, text: "Ścieżka krok po kroku, od materiałów do wyników" },
+                { icon: MessageCircle, text: "Bartek prowadzi każdy krok i zadaje pytania" },
+                { icon: FileDown, text: "Gotowe dokumenty do pobrania" },
+              ].map((b, i) => (
+                <motion.li key={b.text} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 + i * 0.08 }}
+                  className="flex items-start gap-2.5 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+                  <b.icon className="mt-0.5 size-4 shrink-0 text-brand" aria-hidden="true" />{b.text}
+                </motion.li>
+              ))}
+            </ul>
+
+            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
+              <button type="button" onClick={onSkip} className="min-h-11 rounded-xl px-4 text-sm font-semibold text-white/70 hover:bg-white/10 hover:text-white">Pomiń, poradzę sobie</button>
+              <button ref={videoCta} type="button" onClick={onTour}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-brand px-5 font-bold text-brand-ink shadow-[0_12px_30px_-12px_rgba(114,196,28,.6)] hover:brightness-110">
+                <Compass className="size-4" aria-hidden="true" />Pokaż mi, jak to działa
+              </button>
+            </div>
+            </motion.div>
           )}
-        </div>
-
-        <ul className="mt-5 grid gap-3 text-sm sm:grid-cols-3">
-          {[
-            { icon: Route, text: "Ścieżka krok po kroku, od materiałów do wyników" },
-            { icon: MessageCircle, text: "Bartek prowadzi każdy krok i zadaje pytania" },
-            { icon: FileDown, text: "Gotowe dokumenty do pobrania" },
-          ].map((b, i) => (
-            <motion.li key={b.text} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 + i * 0.08 }}
-              className="flex items-start gap-2.5 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
-              <b.icon className="mt-0.5 size-4 shrink-0 text-brand" aria-hidden="true" />{b.text}
-            </motion.li>
-          ))}
-        </ul>
-
-        <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
-          <button type="button" onClick={onSkip} className="min-h-11 rounded-xl px-4 text-sm font-semibold text-white/70 hover:bg-white/10 hover:text-white">Pomiń, poradzę sobie</button>
-          <button ref={primary} type="button" onClick={onTour}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-brand px-5 font-bold text-brand-ink shadow-[0_12px_30px_-12px_rgba(114,196,28,.6)] hover:brightness-110">
-            <Compass className="size-4" aria-hidden="true" />Pokaż mi, jak to działa
-          </button>
-        </div>
+        </AnimatePresence>
       </motion.div>
     </motion.div>
   );

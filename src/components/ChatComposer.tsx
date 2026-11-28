@@ -8,6 +8,8 @@
 //   w historii zostaje dopisek „[Dołączone zdjęcia: N…]” (zdjęć nie zapisujemy).
 // - Nagranie (mp3, m4a, wav, ogg, webm, do 4 MB) → /api/transkrypcja → „Transkrypcja rozmowy:” w polu, do poprawienia.
 // - „Wklej transkrypcję rozmowy”: duże pole, np. na tekst z Fathom.
+// - Pod polem stała linijka: rozmowy obsługuje zewnętrzny model AI, bez danych zdrowotnych i kontaktowych klientów (link do polityki).
+import Link from "next/link";
 import { useEffect, useRef, useState, type Dispatch, type DragEvent, type ReactNode, type RefObject, type SetStateAction } from "react";
 import { Dialog } from "@base-ui/react/dialog";
 import { AnimatePresence, motion } from "motion/react";
@@ -546,8 +548,17 @@ export function ChatComposer({
           <p role="status" className="mx-1 rounded-xl bg-brand/10 px-3 py-2 text-sm text-white/85">{note}</p>
         ) : null}
 
-        <div id={`${id}-help`} className="flex flex-wrap items-center justify-between gap-2 px-3 pb-1 text-xs text-white/55">
-          {footer ?? <span className="pointer-coarse:hidden">Na komputerze: Enter wysyła, Shift+Enter to nowa linia.{features.images ? " Zrzut ekranu wkleisz też przez Ctrl+V." : ""}</span>}
+        <div id={`${id}-help`} className="flex flex-col gap-1 px-3 pb-1 text-xs text-white/55">
+          {/* Stała informacja o AI i danych (audyt UX W9): zawsze widoczna, niezależnie od stopki. */}
+          <p>
+            Rozmowy obsługuje zewnętrzny model AI. Nie wpisuj danych zdrowotnych ani danych kontaktowych klientów.{" "}
+            <Link href="/polityka-prywatnosci#ai" target="_blank" rel="noopener noreferrer" className="font-semibold text-white/75 underline underline-offset-2 hover:text-white">
+              Więcej<span className="sr-only"> o tym, co trafia do AI (polityka prywatności, w nowej karcie)</span>
+            </Link>
+          </p>
+          <div className="flex flex-wrap items-center justify-between gap-2 empty:hidden">
+            {footer ?? <span className="pointer-coarse:hidden">Na komputerze: Enter wysyła, Shift+Enter to nowa linia.{features.images ? " Zrzut ekranu wkleisz też przez Ctrl+V." : ""}</span>}
+          </div>
         </div>
       </form>
 

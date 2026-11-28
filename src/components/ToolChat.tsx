@@ -7,6 +7,7 @@
 // Wiadomość: tekst, dyktowanie, zdjęcia, nagranie i transkrypcja (ChatComposer). Zdjęcia idą tylko z bieżącą wiadomością;
 // miniatury widać do końca wizyty (sentPics), a w zapisanej rozmowie zostaje dopisek, że były.
 // Pierwsze otwarcie narzędzia: okienko „Jak to działa” (ToolIntro), także w panelu bocznym kroku.
+// XP za wiadomość: rewardReply() dopiero po udanej odpowiedzi (setChat sam nie daje XP).
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { motion } from "motion/react";
 import { Copy, Check, RotateCcw, MessageSquareText } from "lucide-react";
@@ -35,7 +36,7 @@ export function ToolChat({ tool, provider, model, messages, onChange, context, c
   context: ToolContext;
   compact?: boolean; // w panelu bocznym kroku: bez osobnego nagłówka (nazwa jest w panelu)
 }) {
-  const { state } = useJourney();
+  const { state, rewardReply } = useJourney();
   const Icon = toolIcon(tool.icon);
   const intro = useIntro(introKey(tool.id));
   const [input, setInput] = useState("");
@@ -92,6 +93,9 @@ export function ToolChat({ tool, provider, model, messages, onChange, context, c
       }
       answer += decoder.decode();
       onChange([...history, { role: "assistant", content: answer.trim() ? answer : "[Brak odpowiedzi. Spróbuj jeszcze raz.]" }]);
+      // XP za wiadomość (i ewentualny nowy poziom) dopiero po udanej, niepustej odpowiedzi. Błąd (503, 429, brak sieci)
+      // albo przerwanie = bez XP i bez fanfary. Klucz rozmowy jak w ToolWorkspace (toolChatKey).
+      if (answer.trim()) rewardReply(`tool:${tool.id}`);
     } catch (err) {
       if (ctrl.signal.aborted) return; // „Nowa rozmowa” albo wyjście ze strony
       setError(err instanceof Error && err.message ? err.message : "Brak połączenia z serwerem.");

@@ -2,7 +2,8 @@
 
 // „Chmurka” z kontaktem do Pawła Wiktorskiego (prośba Pawła 2026-11-27): VSL, landing page, automatyzacje.
 // - duża: strona „Ustawienia konta” (zawsze widoczna),
-// - mała: menu boczne nad kontem; „×” chowa ją na 7 dni (localStorage), w zwiniętym menu jej nie ma.
+// - mała: zwarta karta na końcu przewijanej listy menu (nie nad kontem); „×” chowa ją na 7 dni (localStorage),
+//   w zwiniętym menu i na stronie ustawień (tam jest duża) jej nie ma.
 import { useSyncExternalStore } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { toast } from "sonner";
@@ -97,7 +98,10 @@ export function ContactBubble() {
   );
 }
 
-/** Mała chmurka w menu bocznym (nad kontem). Ukryta w zwiniętym menu i przez 7 dni po zamknięciu. */
+/**
+ * Mała karta w menu bocznym: na samym dole PRZEWIJANEJ listy menu (nie warstwa i nie stopka),
+ * więc nigdy nie zasłania pozycji menu ani konta (audyt UX 2026-11-27, W2). Ukryta w zwiniętym menu i przez 7 dni po zamknięciu.
+ */
 export function ContactBubbleMini() {
   const hidden = useSyncExternalStore(subscribe, hiddenNow, () => true); // na serwerze ukryta: pojawia się po wczytaniu
   const reduce = useReducedMotion();
@@ -107,31 +111,33 @@ export function ContactBubbleMini() {
         <motion.aside
           key="kontakt"
           aria-label="Kontakt: Paweł Wiktorski"
-          initial={reduce ? false : { opacity: 0, y: 10, scale: 0.96 }}
-          animate={{ opacity: 1, y: 0, scale: 1, height: "auto" }}
-          exit={reduce ? { opacity: 0, transition: { duration: 0.01 } } : { opacity: 0, scale: 0.94, height: 0, transition: { duration: 0.22, ease: "easeIn" } }}
-          transition={{ type: "spring", stiffness: 380, damping: 32 }}
-          style={{ transformOrigin: "85% 100%" }}
-          className="overflow-visible px-1 pb-1 group-data-[collapsible=icon]:hidden"
+          initial={reduce ? false : { opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          exit={reduce ? { opacity: 0, transition: { duration: 0.01 } } : { opacity: 0, height: 0, transition: { duration: 0.2, ease: "easeIn" } }}
+          transition={{ duration: 0.25, ease: "easeOut" }}
+          className="shrink-0 overflow-hidden px-2 group-data-[collapsible=icon]:hidden"
         >
-          <div className="relative rounded-2xl rounded-br-md border border-brand/35 bg-[#0f2413] px-3 py-2.5 text-xs shadow-[0_16px_34px_-22px_rgba(114,196,28,.6)]">
-            <span aria-hidden="true" className="absolute -bottom-[7px] right-6 size-3.5 rotate-45 border-b border-r border-brand/35 bg-[#0f2413]" />
-            <div className="flex items-center gap-1.5">
-              <WandSparklesIcon className="size-3.5 shrink-0 text-brand" aria-hidden="true" />
-              <p className="flex-1 font-bold text-brand">Paweł Wiktorski</p>
-              {/* pole kliknięcia 44 px, ale bez powiększania dymka (ujemne marginesy) */}
+          <div className="mb-2 rounded-xl border border-brand/25 bg-[#0f2413] text-xs">
+            <div className="flex items-start gap-2 pl-3">
+              <WandSparklesIcon className="mt-2.5 size-3.5 shrink-0 text-brand" aria-hidden="true" />
+              <p className="flex-1 py-2 leading-snug text-white/80">
+                <span className="font-bold text-brand">Paweł Wiktorski:</span> {QUESTION}
+              </p>
               <button
                 type="button"
                 onClick={hideForAWeek}
                 aria-label="Ukryj kontakt na 7 dni"
                 title="Ukryj na 7 dni"
-                className="-my-3 -mr-2.5 grid size-11 shrink-0 place-items-center rounded-xl text-white/55 hover:text-white"
+                className="grid size-11 shrink-0 place-items-center rounded-xl text-white/55 hover:text-white"
               >
                 <XIcon className="size-4" aria-hidden="true" />
               </button>
             </div>
-            <p className="mt-1 leading-snug text-white/85">{QUESTION} Zgłoś się do mnie:</p>
-            <a href={MAILTO} className="-mb-1.5 inline-flex min-h-11 max-w-full items-center gap-1.5 font-semibold text-brand underline-offset-4 hover:underline">
+            <a
+              href={MAILTO}
+              aria-label={`Napisz do Pawła Wiktorskiego: ${EMAIL}`}
+              className="flex min-h-11 max-w-full items-center gap-1.5 rounded-b-xl border-t border-white/10 px-3 font-semibold text-brand underline-offset-4 hover:underline"
+            >
               <MailIcon className="size-3.5 shrink-0" aria-hidden="true" />
               <span className="truncate">{EMAIL}</span>
             </a>

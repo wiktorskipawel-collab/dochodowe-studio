@@ -19,9 +19,27 @@ Klucze i hasła wklejasz tylko w panelach Supabase/Vercel i w pliku `.env.local`
    ```
 4. **Authentication → URL Configuration**:
    - Site URL: adres z Vercel (krok 3), np. `https://dochodowe-studio.vercel.app`
-   - Redirect URLs (dodaj oba):
-     - `http://localhost:3100/auth/callback`
-     - `https://TWOJ-ADRES.vercel.app/auth/callback`
+   - Redirect URLs (dodaj wszystkie):
+     - `http://localhost:3100/auth/callback**`
+     - `https://TWOJ-ADRES.vercel.app/auth/callback**`
+     - `http://localhost:3100/nowe-haslo`
+     - `https://TWOJ-ADRES.vercel.app/nowe-haslo`
+
+     `**` na końcu jest potrzebne: linki z maili wracają z dopiskiem, np. `/auth/callback?next=/ankieta` (potwierdzenie konta)
+     i `/auth/callback?next=/nowe-haslo` (nowe hasło). Bez adresów z tej listy Supabase odeśle link z maila na Site URL
+     i reset hasła się nie uda.
+5. **Reset hasła („Nie pamiętasz hasła?”)** — jak działa:
+   - Logowanie → „Nie pamiętasz hasła?” → e-mail → Supabase wysyła mail „Reset Password” (adres powrotu `/auth/callback?next=/nowe-haslo`).
+   - Link z maila → `/auth/callback` zamienia go na sesję → strona `/nowe-haslo` → nowe hasło (zapisuje je przeglądarka wprost w Supabase,
+     hasło nie przechodzi przez nasz serwer) → pulpit. Wygasły albo użyty link: komunikat i formularz nowego linku.
+   - Domyślny szablon maila działa, gdy link otworzy się w tej samej przeglądarce, w której poproszono o reset. Żeby działał na każdym
+     urządzeniu (np. prośba na komputerze, mail otwarty na telefonie), w **Authentication → Emails → Reset Password** podmień link na:
+     ```
+     <a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=recovery&next=/nowe-haslo">Ustaw nowe hasło</a>
+     ```
+     (wtedy Site URL musi być adresem aplikacji z Vercel). Ważność linku: **Authentication → Providers → Email → Email OTP Expiration**
+     (domyślnie 3600 s = godzina; tyle obiecuje komunikat w aplikacji).
+   - Tak samo można ustawić szablon **Confirm signup**: `{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=signup&next=/ankieta`.
 
 ## 2. Logowanie przez Google (ok. 10 min)
 
@@ -52,6 +70,7 @@ Od tej chwili przycisk „Kontynuuj z Google” otwiera wybór konta Google i wr
 ## 4. Sprawdzenie
 
 - Rejestracja e-mailem → przychodzi mail z potwierdzeniem → link wraca do ankiety z Bartkiem → pulpit.
+- Logowanie → „Nie pamiętasz hasła?” → mail → link otwiera „Ustaw nowe hasło” → po zapisaniu pulpit i logowanie nowym hasłem działa.
 - „Kontynuuj z Google” → wybór konta → ankieta z Bartkiem → pulpit.
 - W kroku ścieżki: zapowiedź Bartka → lekcja („Obejrzane, lecimy do pytań”) → rozmowa z asystentem → „Przygotuj dokument z rozmowy” → Zatwierdzam / Pobierz.
 - W nagłówku pulpitu: „Zapisano w chmurze”. Postęp zostaje po zalogowaniu na innym komputerze.
@@ -62,3 +81,6 @@ Od tej chwili przycisk „Kontynuuj z Google” otwiera wybór konta Google i wr
 - Wbudowana poczta Supabase wysyła tylko kilka maili na godzinę — wystarczy do testów. Przed startem: własny SMTP (np. Resend) w **Authentication → SMTP**.
 - Plan Vercel Hobby jest do użytku niekomercyjnego. Przed sprzedażą: Vercel Pro.
 - Bez kluczy Supabase aplikacja działa w trybie lokalnym (konto w przeglądarce).
+- `/regulamin` i `/polityka-prywatnosci` to SZKICE („Wersja robocza — do zatwierdzenia przez prawnika”). Przed startem: prawnik,
+  uzupełnienie miejsc w nawiasach `[…]` (nazwa firmy, adres, NIP, e-mail, okresy przechowywania, dostawcy AI) i usunięcie banera
+  oraz `robots: { index: false }` w `src/app/(prawne)/*/page.tsx`. Rejestracja wymaga zaznaczenia „Akceptuję regulamin i politykę prywatności”.

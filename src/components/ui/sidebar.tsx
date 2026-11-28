@@ -268,7 +268,8 @@ function SidebarTrigger({
       data-slot="sidebar-trigger"
       variant="ghost"
       size="icon-sm"
-      className={cn(className)}
+      // DS: na telefonie i ekranach dotykowych cel dotyku 44 px (audyt UX W10)
+      className={cn("max-md:size-11 pointer-coarse:size-11", className)}
       onClick={(event) => {
         onClick?.(event)
         toggleSidebar()

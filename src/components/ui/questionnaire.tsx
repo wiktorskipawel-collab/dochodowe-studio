@@ -20,17 +20,32 @@ function Questionnaire({
   )
 }
 
+// Prymityw ma wbudowany angielski napis („Question 1 of 17”): domyślnie podstawiamy polski („Pytanie 1 z 17”).
 function QuestionnaireProgress({
   className,
+  children,
+  render,
   ...props
 }: React.ComponentProps<typeof QuestionnairePrimitive.Progress>) {
   return (
     <QuestionnairePrimitive.Progress
       data-slot="questionnaire-progress"
+      aria-label="Postęp ankiety"
       className={cn(
         "min-h-[1lh] w-fit min-w-[14ch] text-xs font-medium text-muted-foreground tabular-nums",
         className
       )}
+      render={
+        render ??
+        ((p, state) => {
+          const text = state.total ? `Pytanie ${state.current} z ${state.total}` : undefined
+          return (
+            <div {...p} aria-valuetext={text}>
+              {children ?? text}
+            </div>
+          )
+        })
+      }
       {...props}
     />
   )
@@ -178,6 +193,7 @@ function QuestionnaireInput({
 
 function QuestionnaireError({
   className,
+  children,
   ...props
 }: React.ComponentProps<typeof QuestionnairePrimitive.Error>) {
   return (
@@ -185,7 +201,9 @@ function QuestionnaireError({
       data-slot="questionnaire-error"
       className={cn("mt-2 text-sm text-destructive", className)}
       {...props}
-    />
+    >
+      {children ?? "Odpowiedz na to pytanie, żeby przejść dalej."}
+    </QuestionnairePrimitive.Error>
   )
 }
 
@@ -225,7 +243,7 @@ function QuestionnairePrevious({
       )}
       {...props}
     >
-      {children ?? "Previous"}
+      {children ?? "Wstecz"}
     </QuestionnairePrimitive.Previous>
   )
 }
@@ -250,7 +268,7 @@ function QuestionnaireSkip({
       )}
       {...props}
     >
-      {children ?? "Skip"}
+      {children ?? "Pomiń"}
     </QuestionnairePrimitive.Skip>
   )
 }
@@ -275,7 +293,7 @@ function QuestionnaireNext({
       )}
       {...props}
     >
-      {children ?? "Next"}
+      {children ?? "Dalej"}
     </QuestionnairePrimitive.Next>
   )
 }
@@ -300,7 +318,7 @@ function QuestionnaireSubmit({
       )}
       {...props}
     >
-      {children ?? "Submit"}
+      {children ?? "Wyślij"}
     </QuestionnairePrimitive.Submit>
   )
 }

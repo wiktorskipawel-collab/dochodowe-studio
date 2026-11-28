@@ -127,28 +127,63 @@ export function phaseProgress(state: JourneyState) {
   });
 }
 
-/** Ile pól szablonu dokumentu jest wypełnionych (proste porównanie z szablonem). */
-export function docCompleteness(template: string, content: string | undefined) {
-  if (!content?.trim()) return 0;
-  const labels = template.split("\n").map((l) => l.trim()).filter((l) => /:$/.test(l)).map((l) => l.replace(/:$/, "").toLowerCase());
-  if (!labels.length) return 100;
-  const lines = content.split("\n").map((l) => l.trim());
-  let filled = 0;
-  for (const label of labels) {
+// Wartość pola, która nie jest treścią: „[do uzupełnienia]”, sam znacznik w nawiasie („[KWOTA]”), „…”, „-”.
+const EMPTY_VALUE = /^(\[[^\]]*\]|…+|\.{2,}|[-–—?]+)$/;
+
+/** Pola szablonu dokumentu: które są wypełnione, które puste (proste porównanie z szablonem). */
+export function docCheck(template: string, content: string | undefined) {
+  const text = content?.trim() ?? "";
+  const tpl = template.split("\n").map((l) => l.trim());
+  const fields = tpl.filter((l) => /:$/.test(l)).map((l) => l.replace(/:$/, ""));
+  if (!text) return { pct: 0, chars: 0, filled: 0, total: fields.length, missing: fields };
+  if (!fields.length) return { pct: 100, chars: text.length, filled: 0, total: 0, missing: [] as string[] };
+  const own = new Set(tpl.filter(Boolean).map((l) => l.toLowerCase()));
+  const lines = content!.split("\n").map((l) => l.trim());
+  const missing: string[] = [];
+  for (const field of fields) {
+    const label = field.toLowerCase();
     const i = lines.findIndex((l) => l.toLowerCase().startsWith(label.slice(0, Math.min(label.length, 24))));
-    if (i === -1) continue;
-    const after = lines[i].slice(lines[i].indexOf(":") + 1).trim();
-    const next = lines[i + 1] ?? "";
-    if ((after && !/^\[do uzupełnienia\]$/i.test(after)) || (next && !next.endsWith(":") && !/^\[do uzupełnienia\]$/i.test(next))) filled++;
+    const after = i === -1 ? "" : lines[i].slice(lines[i].indexOf(":") + 1).trim();
+    const next = i === -1 ? "" : lines[i + 1] ?? "";
+    // treść po dwukropku albo w następnej linii (która nie jest kolejną linią szablonu)
+    const ok = (after && !EMPTY_VALUE.test(after)) || (next && !next.endsWith(":") && !own.has(next.toLowerCase()) && !EMPTY_VALUE.test(next));
+    if (!ok) missing.push(field);
   }
-  return Math.round((filled / labels.length) * 100);
+  const filled = fields.length - missing.length;
+  return { pct: Math.round((filled / fields.length) * 100), chars: text.length, filled, total: fields.length, missing };
+}
+
+/** Ile pól szablonu dokumentu jest wypełnionych (w %). */
+export function docCompleteness(template: string, content: string | undefined) {
+  return docCheck(template, content).pct;
+}
+
+// Zatwierdzenie kroku (ApproveDialog.tsx): pustego albo prawie pustego dokumentu nie da się zatwierdzić.
+// DO ZATWIERDZENIA (Bartek): progi.
+export const APPROVE_MIN_CHARS = 300;
+export const APPROVE_MIN_PCT = 50;
+
+/** Czy dokument jest na tyle pełny, żeby go zatwierdzić, a jeśli nie — dlaczego. */
+export function approveBlockers(template: string, content: string | undefined) {
+  const c = docCheck(template, content);
+  const out: string[] = [];
+  if (c.chars < APPROVE_MIN_CHARS) out.push(`Dokument jest za krótki: ${c.chars} z co najmniej ${APPROVE_MIN_CHARS} znaków.`);
+  if (c.total && c.pct < APPROVE_MIN_PCT) out.push(`Wypełnione pola szablonu: ${c.pct}%. Potrzeba co najmniej ${APPROVE_MIN_PCT}%.`);
+  return { check: c, blockers: out };
+}
+
+// „Obejrzane” w lekcji: przycisk włącza się, gdy odtwarzacz był otwarty co najmniej 30 s, a przy krótkim nagraniu
+// (znany czas poniżej minuty) połowę jego długości. Nic poza tym nie śledzimy. DO ZATWIERDZENIA (Bartek): próg.
+export const WATCH_MIN_SECONDS = 30;
+export function watchSeconds(duration?: number) {
+  return duration && duration > 0 ? Math.max(1, Math.min(WATCH_MIN_SECONDS, Math.ceil(duration / 2))) : WATCH_MIN_SECONDS;
 }
 
 export type Badge = { id: string; title: string; desc: string; icon: string; earned: boolean };
 
 export function badges(state: JourneyState): Badge[] {
   const approved = (doc: string) => state.docs[doc]?.status === "approved";
-  const lessons = allLessons().filter((l) => state.watched[l.id]).length;
+  const lessons = lessonProgress(state).path.done;
   const streak = streakDays(state.events);
   const pct = progressPercent(state);
   const msgs = state.events.filter((e) => e.type === "msg").length;
@@ -168,7 +203,7 @@ export function badges(state: JourneyState): Badge[] {
   add("utrzymanie", "Klienci zostają", "Zatwierdzony system utrzymania klientów", "heart", approved("utrzymanie"));
   add("zespol", "Zespół w grze", "Zatwierdzony system zespołu i delegowania", "team", approved("zespol"));
   add("rozmowa", "Rozmowa w toku", "20 wiadomości z asystentem", "chat", msgs >= 20);
-  add("wiedza", "Wiedza w praktyce", "5 zaliczonych lekcji", "book", lessons >= 5);
+  add("wiedza", "Wiedza w praktyce", "5 zaliczonych lekcji ścieżki", "book", lessons >= 5);
   add("seria3", "3 dni w ruchu", "3 dni z rzędu w akcji", "flame", streak >= 3);
   add("seria7", "Tydzień w ruchu", "7 dni bez przerwy", "flame", streak >= 7);
   add("polmetek", "Półmetek", "50% ścieżki", "half", pct >= 50);
@@ -256,6 +291,30 @@ export function stepOfLesson(kursId: string): string | undefined {
   return PATH_LESSON.get(kursId)?.steps[0];
 }
 
+// ---------- LICZNIKI LEKCJI: jedna funkcja dla pulpitu, strony Lekcje, kamieni i odznak ----------
+// „Zaliczona” zawsze znaczy lessonDone(). Dwie osobne pule, zawsze tak nazywane w interfejsie:
+// - LEKCJE ŚCIEŻKI = lekcje przypięte do kroków (allLessons(), każda raz), zakładka /lekcje „Twoja ścieżka”;
+// - LEKCJE KURSÓW = wszystkie lekcje kursów (src/lib/kursy.ts, każda raz), zakładka /lekcje#kursy.
+// Część lekcji jest w obu pulach (pole `ref`): zaliczenie w jednym miejscu liczy się w obu.
+export type LessonTally = { done: number; total: number; pct: number };
+const PATH_LESSON_IDS = allLessons().map((l) => l.id);
+const COURSE_LESSON_IDS = [...new Set(KURSY.flatMap((k) => k.modules.flatMap((m) => m.lessons as string[])))];
+
+/** Ile lekcji z listy (id ze ścieżki albo z kursów) jest zaliczonych. */
+export function lessonTally(state: JourneyState, ids: readonly string[]): LessonTally {
+  const done = ids.filter((id) => lessonDone(state, id)).length;
+  return { done, total: ids.length, pct: ids.length ? Math.round((done / ids.length) * 100) : 0 };
+}
+
+/** Lekcje ścieżki i lekcje kursów osobno + XP zdobyte za lekcje (z prawdziwych zdarzeń). */
+export function lessonProgress(state: JourneyState) {
+  return {
+    path: lessonTally(state, PATH_LESSON_IDS),
+    courses: lessonTally(state, COURSE_LESSON_IDS),
+    xp: state.events.filter((e) => e.type === "lesson").length * XP.lesson,
+  };
+}
+
 // ---------- KAMIENIE MILOWE = moduły kursu „Dochodowe Studio” na Skool ----------
 // Kamień zdobywasz, gdy zrobisz wszystkie zadania modułu: zatwierdzone kroki ścieżki przypisane do modułu
 // + lekcje modułu (zaliczone w kroku albo w bibliotece /lekcje#kursy) + ewentualne zadanie dodatkowe (lokal).
@@ -289,12 +348,12 @@ export const MILESTONES: MilestoneDef[] = [
   { id: "m8", no: 8, module: "ds-usprawnienia", title: "Usprawnienia", short: "Usprawnienia", icon: "usprawnienia", outcome: "Przegląd wyników, kalendarz okazji i usprawnienia na co dzień.", steps: ["wyniki", "okazje"] },
 ];
 
-/** Etapy ścieżki, których zamknięcie = kamień z rozmową (dla ekranu „Etap zamknięty” w Celebration.tsx).
- *  Kamienie 2, 4 i 6 kończą się ostatnim krokiem etapu, a ich lekcje modułu są w krokach, więc zamknięcie etapu
- *  i zdobycie kamienia wypadają w tej samej chwili. */
-export const CALL_PHASES = new Set(
-  MILESTONES.filter((m) => m.call && m.steps.length).map((m) => STEPS.find((s) => s.id === m.steps.at(-1))?.phase ?? ""),
-);
+// NAGRODA „30 minut z Bartkiem”: jedna zasada wszędzie — za kamienie milowe 2, 4 i 6 (pole `call`), nie za etapy ścieżki.
+// Nowo zdobyty kamień wykrywa `commit` w store.tsx (Reward.milestone), a Celebration.tsx pokazuje ekran kamienia.
+// DO ZATWIERDZENIA (Bartek): które kamienie dają rozmowę i link do kalendarza (NEXT_PUBLIC_BARTEK_KALENDARZ).
+export const CALL_MILESTONES = MILESTONES.filter((m) => m.call).map((m) => m.no);
+/** „2, 4 i 6” — numery kamieni z rozmową, do tekstów w interfejsie. */
+export const CALL_MILESTONES_TEXT = CALL_MILESTONES.length > 1 ? `${CALL_MILESTONES.slice(0, -1).join(", ")} i ${CALL_MILESTONES.at(-1)}` : String(CALL_MILESTONES[0] ?? "");
 
 export type MilestoneItem = {
   kind: "step" | "lesson" | "extra";

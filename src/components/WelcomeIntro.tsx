@@ -34,7 +34,7 @@ const SLIDES: Slide[] = [
   {
     top: "Prosto",
     bottom: "na szczyt",
-    caption: "Mapa pokazuje, gdzie jesteś i co dalej. Za zamknięty etap: 30 minut rozmowy z Bartkiem.",
+    caption: "Mapa pokazuje, gdzie jesteś i co dalej. Za kamienie milowe 2, 4 i 6: 30 minut rozmowy z Bartkiem.",
     // dwa szczyty, na wyższym flaga
     pts: [[20, 235], [118, 120], [158, 165], [226, 72], [226, 12], [282, 28], [226, 44], [226, 72], [300, 150], [330, 180], [380, 235], [200, 235]],
     dots: [0, 1, 3, 4, 5, 10],

@@ -8,7 +8,10 @@
 //   Właściciel przechodzi wszystko sam (najpierw studio w pojedynkę, potem szkolenie trenerów i zespół), więc nie ma osobnej
 //   biblioteki dla zespołu. Przejścia między poziomami na GSAP Flip (okładka kursu/modułu przechodzi w nagłówek). Postęp per kurs i moduł.
 // W kursach wszystko jest otwarte od razu. „Obejrzane” daje XP (markWatched) i nie blokuje ścieżki; lekcja, która jest też
-// w kroku, ma z nim wspólne „obejrzane” (pole ref w lekcji kroku). Karty pokazują tylko miniaturę (<img loading="lazy">);
+// w kroku, ma z nim wspólne „obejrzane” (pole ref w lekcji kroku). „Zaliczona” i liczniki: lessonDone() / lessonProgress()
+// z src/lib/gamification.ts (te same liczby co na pulpicie). „Obejrzane” włącza się dopiero po ok. 30 s z otwartym
+// odtwarzaczem (WatchTimer.tsx). Na telefonie odtwarzacz zajmuje cały ekran, „Zamknij” jest zawsze w prawym górnym rogu.
+// Siatki kart mają kolumnę minmax(0,1fr): skracany tekst (truncate) nie rozpycha strony szerzej niż ekran telefonu. Karty pokazują tylko miniaturę (<img loading="lazy">);
 // wideo (iframe Loom/YouTube) ładuje się wyłącznie w otwartym odtwarzaczu. Lekcja bez wideo ma przycisk „Otwórz na Skool”.
 import Link from "next/link";
 import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
@@ -25,7 +28,8 @@ import {
 import { useJourney } from "@/lib/store";
 import { STEPS, allLessons, stepStatuses } from "@/lib/journey";
 import { KURSY, LEKCJE, WSZYSTKIE_LEKCJE, miniatura, wideoLekcji, type Kurs, type LekcjaKursu, type ModulKursu } from "@/lib/kursy";
-import { XP, streakDays } from "@/lib/gamification";
+import { XP, streakDays, lessonDone, lessonProgress, lessonTally, watchSeconds, type LessonTally } from "@/lib/gamification";
+import { useWatchCountdown, countdown } from "@/components/WatchTimer";
 import { play } from "@/lib/sfx";
 import { Ring } from "@/components/Charts";
 import { StepIcon } from "@/components/PathTerrain";
@@ -338,7 +342,9 @@ function usePlayer(id: string, enterRef: React.RefObject<Flip.FlipState | null>,
     const reduce = bezRuchu();
     const st = enterRef.current;
     enterRef.current = null;
-    if (st && thumb.current && !reduce) Flip.from(st, { targets: thumb.current, duration: 0.75, ease: "expo.inOut", scale: true, zIndex: 90 });
+    const el = thumb.current;
+    // Po animacji Flip zdejmujemy wpisane w style rozmiary i przekształcenia, żeby odtwarzacz zawsze miał szerokość ekranu.
+    if (st && el && !reduce) Flip.from(st, { targets: el, duration: 0.75, ease: "expo.inOut", scale: true, zIndex: 90, onComplete: () => { gsap.set(el, { clearProps: "all" }); } });
     gsap.fromTo(shade.current, { opacity: 0 }, { opacity: 1, duration: 0.4 });
     gsap.fromTo(panel.current?.children ?? [], { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.07, delay: reduce ? 0 : 0.45, ease: "power3.out" });
     focus.current?.focus({ preventScroll: true });
@@ -396,7 +402,7 @@ function usePlayerFlip(prefix: string) {
     flipClose.current = null;
     const target = source.current?.isConnected ? source.current : document.querySelector(`[data-flip-id="${prefix}-${back.id}"]`);
     source.current = null;
-    if (target && (target as HTMLElement).offsetParent) Flip.from(back.state, { targets: target, duration: 0.6, ease: "expo.inOut", scale: true, zIndex: 40 });
+    if (target && (target as HTMLElement).offsetParent) Flip.from(back.state, { targets: target, duration: 0.6, ease: "expo.inOut", scale: true, zIndex: 40, onComplete: () => { gsap.set(target, { clearProps: "all" }); } });
   }, [open, prefix]);
 
   return { open, openLesson, switchTo, closeLesson, flipOpen };
@@ -425,9 +431,13 @@ function useFlipFilter<F extends string>(initial: F, cardSelector: string) {
       absolute: true,
       onEnter: (els) => gsap.fromTo(els, { opacity: 0, scale: 0.8, y: 30 }, { opacity: 1, scale: 1, y: 0, duration: 0.5, stagger: 0.05, ease: "back.out(1.7)" }),
       onLeave: (els) => gsap.to(els, { opacity: 0, scale: 0.8, duration: 0.35, ease: "power2.in" }),
-      onComplete: () => ScrollTrigger.refresh(),
+      onComplete: () => {
+        // bez resztek układu z Flip (absolute): karta wraca do szerokości kolumny
+        if (grid.current) gsap.set(grid.current.querySelectorAll(cardSelector), { clearProps: "position,top,left,width,height" });
+        ScrollTrigger.refresh();
+      },
     });
-  }, [filter]);
+  }, [filter, cardSelector]);
 
   return { filter, choose, grid };
 }
@@ -451,7 +461,7 @@ function useCardsIn(scope: React.RefObject<HTMLDivElement | null>, cardSelector:
 }
 
 /** Odtwarzacz lekcji (ścieżka i kursy). Iframe z wideo powstaje dopiero tutaj; pod nim miniatura, dopóki film się nie wczyta. */
-function Odtwarzacz({ id, flipId, title, eyebrow, sub, video, thumb: miniaturaFilmu, opis, attachments, skool, done, poster, enterRef, onClose, onDone, onUndo, link, next }: {
+function Odtwarzacz({ id, flipId, title, eyebrow, sub, video, thumb: miniaturaFilmu, duration, opis, attachments, skool, done, poster, enterRef, onClose, onDone, onUndo, link, next }: {
   id: string;
   flipId: string;
   title: string;
@@ -459,6 +469,7 @@ function Odtwarzacz({ id, flipId, title, eyebrow, sub, video, thumb: miniaturaFi
   sub?: string;
   video?: string;
   thumb?: string;
+  duration?: number; // czas nagrania w s: krótkie nagranie = krótszy próg „Obejrzane”
   opis?: string;
   attachments?: string[];
   skool?: string;
@@ -467,12 +478,16 @@ function Odtwarzacz({ id, flipId, title, eyebrow, sub, video, thumb: miniaturaFi
   enterRef: React.RefObject<Flip.FlipState | null>;
   onClose: (state: Flip.FlipState, id: string) => void;
   onDone: () => void;
-  onUndo: () => void;
+  onUndo?: () => void; // tylko gdy lekcja jest odhaczona ręcznie (zaliczona przez zatwierdzony krok nie ma „Cofnij”)
   link?: { href: string; label: string };
   next?: { title: string; go: () => void };
 }) {
-  const primary = useRef<HTMLButtonElement>(null);
-  const { thumb, shade, panel, close } = usePlayer(id, enterRef, onClose, primary);
+  // Fokus startuje na „Zamknij”, nie na „Obejrzane” (jedno Enter nie zalicza lekcji).
+  const closeBtn = useRef<HTMLButtonElement>(null);
+  const { thumb, shade, panel, close } = usePlayer(id, enterRef, onClose, closeBtn);
+  const need = watchSeconds(video ? duration : undefined);
+  const left = useWatchCountdown(id, need, !done);
+  const label = video ? "Obejrzane" : "Zaliczone";
 
   // „Następna lekcja” podmienia treść w otwartym odtwarzaczu: krótki wjazd opisu.
   const poprzednia = useRef(id);
@@ -483,10 +498,15 @@ function Odtwarzacz({ id, flipId, title, eyebrow, sub, video, thumb: miniaturaFi
   }, [id, panel]);
 
   return (
-    <div className="fixed inset-0 z-[75] overflow-y-auto">
-      <div ref={shade} aria-hidden="true" onClick={close} className="fixed inset-0 bg-[#020904]/85 backdrop-blur-md" />
-      <div role="dialog" aria-modal="true" aria-labelledby="lekcja-h" className="relative mx-auto flex min-h-full w-full max-w-4xl flex-col justify-center gap-5 p-4 md:p-8">
-        <div ref={thumb} data-flip-id={flipId} className="overflow-hidden rounded-3xl border border-white/10 bg-black shadow-[0_40px_120px_-30px_rgba(0,0,0,.9)]">
+    <div className="fixed inset-0 z-[75] overflow-y-auto overflow-x-hidden overscroll-contain">
+      <div ref={shade} aria-hidden="true" onClick={close} className="fixed inset-0 bg-[#020904] md:bg-[#020904]/85 md:backdrop-blur-md" />
+      <div role="dialog" aria-modal="true" aria-labelledby="lekcja-h" className="relative mx-auto flex min-h-full w-full min-w-0 max-w-4xl flex-col gap-5 pb-8 pt-[4.25rem] md:justify-center md:px-8 md:pb-8 md:pt-20">
+        {/* Zamknij: zawsze widoczny, przypięty w prawym górnym rogu ekranu (na telefonie nad filmem) */}
+        <button ref={closeBtn} type="button" onClick={close} aria-label="Zamknij lekcję"
+          className="fixed right-3 top-3 z-10 inline-flex min-h-11 items-center gap-2 rounded-xl bg-black/75 px-3.5 text-sm font-semibold text-white ring-1 ring-white/20 backdrop-blur-md hover:bg-white/15 md:right-6 md:top-6">
+          <X className="size-5" aria-hidden="true" />Zamknij
+        </button>
+        <div ref={thumb} data-flip-id={flipId} className="w-full overflow-hidden bg-black md:rounded-3xl md:border md:border-white/10 md:shadow-[0_40px_120px_-30px_rgba(0,0,0,.9)]">
           {video ? (
             <div className="relative aspect-video w-full">
               {miniaturaFilmu ? (
@@ -502,29 +522,27 @@ function Odtwarzacz({ id, flipId, title, eyebrow, sub, video, thumb: miniaturaFi
             </div>
           )}
         </div>
-        <div ref={panel} className="flex flex-col gap-4">
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand">{eyebrow}</p>
-              <h2 id="lekcja-h" className="mt-1 text-2xl font-extrabold md:text-3xl">{title}</h2>
-              {sub ? <p className="text-white/60">{sub}</p> : null}
-            </div>
-            <button ref={done ? primary : undefined} type="button" onClick={close} aria-label="Zamknij lekcję" className="grid size-11 shrink-0 place-items-center rounded-xl text-white/70 hover:bg-white/10 hover:text-white">
-              <X className="size-5" aria-hidden="true" />
-            </button>
+        <div ref={panel} className="flex min-w-0 flex-col gap-4 px-4 md:px-0">
+          <div className="min-w-0">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand">{eyebrow}</p>
+            <h2 id="lekcja-h" className="mt-1 text-2xl font-extrabold md:text-3xl">{title}</h2>
+            {sub ? <p className="text-white/60">{sub}</p> : null}
           </div>
           {opis ? <p className="max-w-3xl text-base leading-relaxed text-white/80">{opis}</p> : null}
           {attachments?.length ? <Zalaczniki list={attachments} /> : null}
+          {!done && left > 0 ? <p className="text-xs text-white/55">„{label}” włączy się po {need} s z otwartą lekcją.</p> : null}
           <div className="flex flex-wrap items-center gap-3">
             {done ? (
               <>
                 <span className="inline-flex min-h-12 items-center gap-2 rounded-2xl bg-brand/15 px-5 font-extrabold text-brand"><Check className="size-5" aria-hidden="true" />Lekcja zaliczona</span>
-                <button type="button" onClick={onUndo} className="min-h-11 rounded-xl px-3 text-sm font-semibold text-white/60 hover:bg-white/10 hover:text-white">Cofnij</button>
+                {onUndo ? <button type="button" onClick={onUndo} className="min-h-11 rounded-xl px-3 text-sm font-semibold text-white/60 hover:bg-white/10 hover:text-white">Cofnij</button> : null}
               </>
             ) : (
-              <button ref={done ? undefined : primary} type="button" onClick={() => { onDone(); close(); }}
-                className="inline-flex min-h-12 items-center gap-2 rounded-2xl bg-brand px-6 text-base font-extrabold text-brand-ink shadow-[0_6px_0_0_rgba(0,0,0,.35)] transition-transform active:translate-y-[3px] active:shadow-[0_3px_0_0_rgba(0,0,0,.35)]">
-                <Check className="size-5" aria-hidden="true" />{video ? "Obejrzane" : "Zaliczone"} · +{XP.lesson} XP
+              <button type="button" disabled={left > 0} onClick={() => { onDone(); close(); }}
+                className="inline-flex min-h-12 items-center gap-2 rounded-2xl bg-brand px-6 text-base font-extrabold text-brand-ink shadow-[0_6px_0_0_rgba(0,0,0,.35)] transition-transform active:translate-y-[3px] active:shadow-[0_3px_0_0_rgba(0,0,0,.35)] disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/70 disabled:shadow-none disabled:active:translate-y-0">
+                {left > 0
+                  ? <><Clock className="size-5" aria-hidden="true" />{label} za <span className="tabular-nums">{countdown(left)}</span></>
+                  : <><Check className="size-5" aria-hidden="true" />{label} · +{XP.lesson} XP</>}
               </button>
             )}
             {skool ? <SkoolLink href={skool} strong={!video} /> : null}
@@ -559,16 +577,16 @@ function SciezkaLekcje() {
   const { open, openLesson, closeLesson, flipOpen } = usePlayerFlip("thumb");
 
   const statuses = stepStatuses(state);
+  const lp = lessonProgress(state); // te same liczby co na pulpicie („Lekcje ścieżki”)
   const items: Item[] = allLessons().map((lesson, i) => {
     const step = STEPS.find((s) => s.lessons.some((l) => l.id === lesson.id)) ?? STEPS[0];
-    const status: Status = state.watched[lesson.id] ? "done" : statuses[step.id] === "locked" ? "locked" : "open";
+    const status: Status = lessonDone(state, lesson.id) ? "done" : statuses[step.id] === "locked" ? "locked" : "open";
     const k = lesson.ref ? ITEM.get(lesson.ref) : undefined;
     const gdzie = k ? `${k.kurs.title} · ${k.modul.title}` : lesson.source.replace(/^Skool · /, "") /* starszy zapis źródła */;
     return { lesson, no: i + 1, step, phase: PHASES.indexOf(step.phase), status, ...wideoLekcji(lesson), gdzie };
   });
   const count = (f: Filter) => items.filter((it) => match(it, f)).length;
-  const done = count("done");
-  const pct = items.length ? Math.round((done / items.length) * 100) : 0;
+  const { done, total, pct } = lp.path;
   const nextUp = items.find((it) => it.status === "open");
   const streak = streakDays(state.events);
 
@@ -580,17 +598,17 @@ function SciezkaLekcje() {
   return (
     <div ref={root} className="flex flex-col gap-8">
       {/* GÓRA: postęp + następna lekcja */}
-      <section data-hero className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)]">
+      <section data-hero className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)]">
         <div className="glass-card flex flex-col justify-between gap-6 rounded-3xl p-6 md:p-8">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-brand">Twoje lekcje</p>
             <h2 className="mt-2 text-3xl font-extrabold leading-tight md:text-4xl">Jedna lekcja dziennie.<br /><span className="text-white/60">Tyle wystarczy.</span></h2>
           </div>
           <div className="flex items-center gap-5">
-            <Ring value={pct} size={120} stroke={11} label="Zaliczone lekcje" sub="zaliczone" />
+            <Ring value={pct} size={120} stroke={11} label="Zaliczone lekcje ścieżki" sub="zaliczone" />
             <ul className="flex flex-col gap-2 text-sm">
-              <li className="flex items-center gap-2"><PlayCircle className="size-4 text-brand" aria-hidden="true" /><strong className="tabular-nums">{done}/{items.length}</strong> lekcji</li>
-              <li className="flex items-center gap-2"><Zap className="size-4 text-orange" aria-hidden="true" /><strong className="tabular-nums">{done * XP.lesson}</strong> XP z lekcji</li>
+              <li className="flex items-center gap-2"><PlayCircle className="size-4 text-brand" aria-hidden="true" /><strong className="tabular-nums">{done}/{total}</strong> lekcji ścieżki</li>
+              <li className="flex items-center gap-2"><Zap className="size-4 text-orange" aria-hidden="true" /><strong className="tabular-nums">{lp.xp}</strong> XP z lekcji</li>
               <li className="flex items-center gap-2"><Flame className="size-4 text-orange" aria-hidden="true" /><strong className="tabular-nums">{streak}</strong> {streak === 1 ? "dzień" : "dni"} z rzędu</li>
             </ul>
           </div>
@@ -643,7 +661,7 @@ function SciezkaLekcje() {
       </div>
 
       {/* KARTY */}
-      <ul ref={grid} className="relative grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+      <ul ref={grid} className="relative grid grid-cols-[minmax(0,1fr)] gap-5 sm:grid-cols-2 xl:grid-cols-3">
         {items.map((it) => (
           <li key={it.lesson.id} data-card className={match(it, filter) ? "" : "hidden"}>
             <Card item={it} hidden={open === it.lesson.id} onOpen={(el) => openLesson(it.lesson.id, el)} />
@@ -661,10 +679,10 @@ function SciezkaLekcje() {
             <Odtwarzacz id={current.lesson.id} flipId={`thumb-${current.lesson.id}`} title={current.lesson.title}
               eyebrow={`Krok ${current.step.no}: ${current.step.title}`}
               sub={`${current.gdzie}${current.duration ? ` · ${czas(current.duration)}` : ""}`}
-              video={current.lesson.video} thumb={current.thumb} opis={current.lesson.opis} attachments={current.lesson.attachments} skool={current.lesson.skool}
+              video={current.lesson.video} thumb={current.thumb} duration={current.duration} opis={current.lesson.opis} attachments={current.lesson.attachments} skool={current.lesson.skool}
               done={current.status === "done"} poster={<SciezkaOkladka item={{ ...current, status: current.status === "done" ? "done" : "open" }} big />}
               enterRef={flipOpen} onClose={closeLesson}
-              onDone={() => markWatched([current.lesson.id])} onUndo={() => toggleWatched(current.lesson.id)}
+              onDone={() => markWatched([current.lesson.id])} onUndo={state.watched[current.lesson.id] ? () => toggleWatched(current.lesson.id) : undefined}
               link={{ href: `/krok/${current.step.id}`, label: `Przejdź do kroku ${current.step.no}` }} />,
             document.body,
           )
@@ -728,8 +746,9 @@ function Kursy({ start }: { start: string | null }) {
   const widziane = useRef(new WeakSet<Element>());
   const { open, openLesson, switchTo, closeLesson, flipOpen } = usePlayerFlip("lib");
 
-  const watched = (t: KursItem) => !!state.watched[t.watchId];
-  const zaliczone = (list: KursItem[]) => list.filter(watched).length;
+  // „Zaliczona” = lessonDone() (to samo co pulpit i kamienie milowe); id kursu łączy się z lekcją kroku przez pole ref.
+  const watched = (t: KursItem) => lessonDone(state, t.id);
+  const zaliczone = (list: KursItem[]) => lessonTally(state, list.map((t) => t.id)).done;
   const nastepna = (list: KursItem[]) => list.find((t) => !watched(t) && t.lesson.video) ?? list.find((t) => !watched(t));
 
   /** Przejście między poziomami: zapamiętaj okładki (Flip), zmień widok. */
@@ -775,7 +794,7 @@ function Kursy({ start }: { start: string | null }) {
   return (
     <div ref={root} className="flex flex-col gap-8">
       {!k ? (
-        <ListaKursow zaliczone={zaliczone} nastepna={nastepna} open={open}
+        <ListaKursow postep={lessonProgress(state).courses} zaliczone={zaliczone} nastepna={nastepna} open={open}
           onKurs={(id) => go({ kurs: id, modul: null })} onLekcja={openLesson} />
       ) : (
         <WidokKursu kurs={k} modul={m} watched={watched} zaliczone={zaliczone} nastepna={nastepna} open={open}
@@ -787,10 +806,10 @@ function Kursy({ start }: { start: string | null }) {
             <Odtwarzacz id={current.id} flipId={`lib-${current.id}`} title={current.lesson.title}
               eyebrow={`${current.kurs.title} · ${current.modul.title}`}
               sub={`Lekcja ${current.no} z ${lekcjeOtwartegoModulu.length}${current.lesson.sekcja ? ` · ${current.lesson.sekcja}` : ""}${current.lesson.duration ? ` · ${czas(current.lesson.duration)}` : ""}`}
-              video={current.lesson.video} thumb={miniatura(current.lesson)} opis={current.lesson.opis} attachments={current.lesson.attachments} skool={current.lesson.skool}
+              video={current.lesson.video} thumb={miniatura(current.lesson)} duration={current.lesson.duration} opis={current.lesson.opis} attachments={current.lesson.attachments} skool={current.lesson.skool}
               done={watched(current)} poster={<LekcjaOkladka item={current} watched={watched(current)} big />}
               enterRef={flipOpen} onClose={closeLesson}
-              onDone={() => markWatched([current.watchId])} onUndo={() => toggleWatched(current.watchId)}
+              onDone={() => markWatched([current.watchId])} onUndo={state.watched[current.watchId] ? () => toggleWatched(current.watchId) : undefined}
               link={current.step ? { href: `/krok/${current.step.id}`, label: `Krok ${current.step.no} ścieżki` } : undefined}
               next={dalej ? { title: dalej.lesson.title, go: () => switchTo(dalej.id) } : undefined} />,
             document.body,
@@ -809,15 +828,13 @@ type Postepy = {
 };
 
 /** Poziom 1: wszystkie kursy (kolejność ze Skool) + „Kontynuuj”. */
-function ListaKursow({ zaliczone, nastepna, open, onKurs, onLekcja }: Omit<Postepy, "watched"> & { onKurs: (id: string) => void }) {
-  const done = zaliczone(WSZYSTKIE_ITEMY);
-  const total = WSZYSTKIE_ITEMY.length;
-  const pct = total ? Math.round((done / total) * 100) : 0;
+function ListaKursow({ postep, zaliczone, nastepna, open, onKurs, onLekcja }: Omit<Postepy, "watched"> & { postep: LessonTally; onKurs: (id: string) => void }) {
+  const { done, total, pct } = postep; // „Lekcje kursów”: lessonProgress(state).courses
   const dalej = nastepna(WSZYSTKIE_ITEMY);
 
   return (
     <>
-      <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)]">
+      <section className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)]">
         <div data-wjazd className="glass-card flex flex-col justify-between gap-6 rounded-3xl p-6 md:p-8">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-brand">Kursy</p>
@@ -830,7 +847,7 @@ function ListaKursow({ zaliczone, nastepna, open, onKurs, onLekcja }: Omit<Poste
           <div className="flex items-center gap-5">
             <Ring value={pct} size={112} stroke={10} label="Zaliczone lekcje z kursów" sub="zaliczone" />
             <ul className="flex flex-col gap-2 text-sm">
-              <li className="flex items-center gap-2"><PlayCircle className="size-4 text-brand" aria-hidden="true" /><strong className="tabular-nums">{done}/{total}</strong> lekcji</li>
+              <li className="flex items-center gap-2"><PlayCircle className="size-4 text-brand" aria-hidden="true" /><strong className="tabular-nums">{done}/{total}</strong> lekcji kursów</li>
               <li className="flex items-center gap-2"><Clock className="size-4 text-brand" aria-hidden="true" /><strong>{czasRazem(sekundy(WSZYSTKIE_ITEMY))}</strong> nagrań</li>
               <li className="flex items-center gap-2"><Zap className="size-4 text-orange" aria-hidden="true" />+{XP.lesson} XP za lekcję</li>
             </ul>
@@ -868,7 +885,7 @@ function ListaKursow({ zaliczone, nastepna, open, onKurs, onLekcja }: Omit<Poste
 
       <section aria-labelledby="kursy-h" className="flex flex-col gap-4">
         <h2 id="kursy-h" data-wjazd className="text-xl font-extrabold">Wszystkie kursy <span className="font-semibold text-white/50">· {kursow(KURSY.length)}, po kolei</span></h2>
-        <ol className="grid gap-5 md:grid-cols-2">
+        <ol className="grid grid-cols-[minmax(0,1fr)] gap-5 md:grid-cols-2">
           {KURSY.map((kurs, i) => {
             const list = KURS_ITEMS[kurs.id];
             const d = zaliczone(list);
@@ -934,7 +951,7 @@ function WidokKursu({ kurs, modul, watched, zaliczone, nastepna, open, go, onLek
       </nav>
 
       {/* NAGŁÓWEK KURSU */}
-      <section className="glass-card grid gap-5 rounded-3xl p-4 md:grid-cols-[minmax(0,320px)_minmax(0,1fr)] md:p-5">
+      <section className="glass-card grid grid-cols-[minmax(0,1fr)] gap-5 rounded-3xl p-4 md:grid-cols-[minmax(0,320px)_minmax(0,1fr)] md:p-5">
         <div data-nav-flip data-flip-id={`kurs-${kurs.id}`} className="relative aspect-video w-full overflow-hidden rounded-2xl bg-[#061008]">
           <KursOkladka kurs={kurs} no={no} done={d === list.length} />
         </div>
@@ -963,7 +980,7 @@ function WidokKursu({ kurs, modul, watched, zaliczone, nastepna, open, go, onLek
         /* POZIOM 2: moduły kursu po kolei */
         <section aria-labelledby="moduly-h" className="flex flex-col gap-4">
           <h3 id="moduly-h" data-wjazd className="text-xl font-extrabold">Moduły <span className="font-semibold text-white/50">· {modulow(kurs.modules.length)}, po kolei</span></h3>
-          <ol className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+          <ol className="grid grid-cols-[minmax(0,1fr)] gap-5 sm:grid-cols-2 xl:grid-cols-3">
             {kurs.modules.map((mod, i) => {
               const lekcje = lekcjeModulu(kurs, mod);
               const dm = zaliczone(lekcje);
@@ -1033,7 +1050,7 @@ function ModulLekcje({ kurs, modul, mi, watched, zaliczone, open, go, onLekcja, 
         </div>
       </div>
 
-      <ul className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+      <ul className="grid grid-cols-[minmax(0,1fr)] gap-5 sm:grid-cols-2 xl:grid-cols-3">
         {lekcje.map((t, i) => (
           <Fragment key={t.id}>
             {t.lesson.sekcja && t.lesson.sekcja !== lekcje[i - 1]?.lesson.sekcja ? (

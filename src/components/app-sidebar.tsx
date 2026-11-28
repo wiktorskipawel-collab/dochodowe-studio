@@ -29,6 +29,10 @@ import { ContactBubbleMini } from "@/components/ContactBubble";
 
 type Item = { title: string; url: string; icon: LucideIcon; doc?: string };
 
+// Cele dotyku: na telefonie (i ekranach dotykowych) co najmniej 44 px wysokości.
+const TOUCH_H = "max-md:h-11 pointer-coarse:h-11";
+const TOUCH_ITEM = "max-md:min-h-11 pointer-coarse:min-h-11";
+
 // Ścieżka = prowadzenie krok po kroku. „Mój marketing” = to, do czego właściciel wraca po ścieżce (decyzja Pawła 2026-11-27).
 const PATH: Item[] = [
   { title: "Pulpit", url: "/", icon: LayoutDashboardIcon },
@@ -104,8 +108,8 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                 <SidebarMenuButton
                   tooltip={approved ? `${item.title} · zatwierdzony` : item.title}
                   isActive={active}
-                  render={<Link href={item.url} onClick={go(item.url)} />}
-                  className={`relative z-10 h-10 bg-transparent hover:bg-transparent active:bg-transparent data-active:bg-transparent ${active ? "font-bold text-brand-ink hover:text-brand-ink data-active:text-brand-ink" : ""}`}
+                  render={<Link href={item.url} onClick={go(item.url)} aria-current={active ? "page" : undefined} />}
+                  className={`relative z-10 h-10 bg-transparent hover:bg-transparent active:bg-transparent data-active:bg-transparent ${TOUCH_H} ${active ? "font-bold text-brand-ink hover:text-brand-ink data-active:text-brand-ink" : ""}`}
                 >
                   <item.icon />
                   <span>{item.title}</span>
@@ -148,11 +152,13 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
           </div>
           <MiniLevel pct={pct} index={level.index} text={`Poziom ${level.index}: ${level.name} · ${xp} XP · ${streakText} · ścieżka ${pct}%`} />
         </SidebarGroup>
+
+        {/* Kontakt do Pawła: na samym końcu przewijanej listy, nie w stopce — nie zasłania menu ani konta.
+            Ukrywany na 7 dni; w zwiniętym menu i w ustawieniach (tam jest duża wersja) go nie ma. */}
+        {path.startsWith("/ustawienia") ? null : <ContactBubbleMini />}
       </SidebarContent>
 
       <SidebarFooter>
-        {/* chmurka z kontaktem do Pawła (ukrywana na 7 dni, w zwiniętym menu jej nie ma) */}
-        <ContactBubbleMini />
         <NavUser />
       </SidebarFooter>
       <SidebarRail />
@@ -208,13 +214,13 @@ function NavUser() {
             {/* Etykieta grupy musi być w DropdownMenuGroup (Base UI: bez grupy menu się wysypuje przy otwarciu). */}
             <DropdownMenuGroup>
               <DropdownMenuLabel className="text-xs text-muted-foreground">Konto</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => { if (isMobile) setOpenMobile(false); router.push("/ustawienia"); }}><SettingsIcon />Ustawienia konta</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => { router.push("/"); startTour(); }}><CompassIcon />Powitanie i przewodnik</DropdownMenuItem>
-              <DropdownMenuItem closeOnClick={false} onClick={toggleSound}>{sound ? <Volume2Icon /> : <VolumeXIcon />}Dźwięki nagród: {sound ? "włączone" : "wyłączone"}</DropdownMenuItem>
-              {platformAi ? null : <DropdownMenuItem onClick={() => router.push("/polacz")}><PlugZapIcon />Połączenie z AI</DropdownMenuItem>}
+              <DropdownMenuItem className={TOUCH_ITEM} onClick={() => { if (isMobile) setOpenMobile(false); router.push("/ustawienia"); }}><SettingsIcon />Ustawienia konta</DropdownMenuItem>
+              <DropdownMenuItem className={TOUCH_ITEM} onClick={() => { if (isMobile) setOpenMobile(false); router.push("/"); startTour(); }}><CompassIcon />Powitanie i przewodnik</DropdownMenuItem>
+              <DropdownMenuItem className={TOUCH_ITEM} closeOnClick={false} onClick={toggleSound}>{sound ? <Volume2Icon /> : <VolumeXIcon />}Dźwięki nagród: {sound ? "włączone" : "wyłączone"}</DropdownMenuItem>
+              {platformAi ? null : <DropdownMenuItem className={TOUCH_ITEM} onClick={() => router.push("/polacz")}><PlugZapIcon />Połączenie z AI</DropdownMenuItem>}
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => { signOut(); router.push("/logowanie"); }}><LogOutIcon />Wyloguj</DropdownMenuItem>
+            <DropdownMenuItem className={TOUCH_ITEM} onClick={() => { signOut(); router.push("/logowanie"); }}><LogOutIcon />Wyloguj</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>

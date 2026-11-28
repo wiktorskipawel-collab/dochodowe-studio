@@ -68,7 +68,7 @@ const BASE: BaseMeta[] = [
     desc: "Wklejasz rozmowę z leadem, dodajesz zrzut ekranu albo opisujesz sytuację. Dostajesz status CRM, następny krok i gotową wiadomość do wysłania.",
     opener: "Wklej rozmowę z leadem (DM, SMS, notatki z telefonu), dodaj zrzut ekranu rozmowy albo opisz sytuację w 2–3 zdaniach. Powiem, na jakim etapie jest lead, co zrobić teraz, i dam gotową wiadomość do wysłania.",
     placeholder: "Wklej rozmowę albo opisz sytuację, np. „Lead z formularza, 2 telefony bez odbioru, SMS wysłany wczoraj”",
-    hint: "Działa jak Asystent sprzedażowy ze Skool. Każda odpowiedź ma ten sam układ: status CRM, diagnoza, co zrobić, wiadomość do wysłania, kiedy wrócić i co dalej, gdy klient odpowie.",
+    hint: "Działa jak asystent sprzedażowy z kursu Bartka. Każda odpowiedź ma ten sam układ: status CRM, diagnoza, co zrobić, wiadomość do wysłania, kiedy wrócić i co dalej, gdy klient odpowie.",
     uses: ["oferta", "awatar", "sprzedaz"],
     copyHeadings: ["Wiadomość do wysłania"],
     starters: [

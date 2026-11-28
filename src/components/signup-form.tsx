@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,7 +11,9 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { useJourney } from "@/lib/store";
 import { signUpWithPassword, supabaseEnabled } from "@/lib/auth";
-import { BrandLogo, GoogleButton } from "@/components/login-form";
+import { BrandLogo, GoogleButton, LegalLink } from "@/components/login-form";
+
+const CONSENT_MISSING = "Zaznacz akceptację regulaminu i polityki prywatności, żeby założyć konto.";
 
 export function SignupForm({ className, ...props }: React.ComponentProps<"div">) {
   const { state, signIn } = useJourney();
@@ -23,6 +25,22 @@ export function SignupForm({ className, ...props }: React.ComponentProps<"div">)
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [checkMail, setCheckMail] = useState(false);
+  const [accepted, setAccepted] = useState(false); // zgoda: regulamin i polityka prywatności (wymagana, także przy Google)
+  const [consentError, setConsentError] = useState(false);
+  const consentRef = useRef<HTMLInputElement>(null);
+
+  /** Bez zgody nie zakładamy konta (ani e-mailem, ani przez Google). */
+  function consentGiven() {
+    if (accepted) {
+      // zgoda przy rejestracji przez Google: zapiszemy ją na koncie po powrocie (store.tsx, loadUser)
+      try { localStorage.setItem("ds:zgoda", new Date().toISOString()); } catch { /* bez localStorage zgoda zostaje tylko w formularzu */ }
+      return true;
+    }
+    setConsentError(true);
+    setError(CONSENT_MISSING);
+    consentRef.current?.focus();
+    return false;
+  }
 
   useEffect(() => {
     if (busy && supabaseEnabled && state.profile?.email.toLowerCase() === email.trim().toLowerCase()) router.push("/ankieta");
@@ -31,6 +49,7 @@ export function SignupForm({ className, ...props }: React.ComponentProps<"div">)
   async function submit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    if (!consentGiven()) return;
     if (pass.length < 8) return setError("Hasło musi mieć co najmniej 8 znaków.");
     if (pass !== pass2) return setError("Hasła nie są takie same.");
     const mail = email.trim().toLowerCase();
@@ -66,7 +85,7 @@ export function SignupForm({ className, ...props }: React.ComponentProps<"div">)
             <form onSubmit={submit}>
               <FieldGroup>
                 <Field>
-                  <GoogleButton label="Zarejestruj się przez Google" onError={setError} />
+                  <GoogleButton label="Zarejestruj się przez Google" onError={setError} guard={consentGiven} />
                 </Field>
                 <FieldSeparator>albo e-mailem</FieldSeparator>
                 <Field>
@@ -85,6 +104,18 @@ export function SignupForm({ className, ...props }: React.ComponentProps<"div">)
                 <Field>
                   <FieldLabel htmlFor="password2">Powtórz hasło</FieldLabel>
                   <Input id="password2" type="password" autoComplete="new-password" required value={pass2} onChange={(e) => setPass2(e.target.value)} />
+                </Field>
+                <Field>
+                  <div className="flex items-start gap-3">
+                    <input ref={consentRef} id="zgoda" type="checkbox" required checked={accepted}
+                      onChange={(e) => { setAccepted(e.target.checked); if (e.target.checked) { setConsentError(false); setError((cur) => (cur === CONSENT_MISSING ? null : cur)); } }}
+                      aria-invalid={consentError || undefined} aria-describedby="zgoda-ai"
+                      className="mt-0.5 size-5 shrink-0 cursor-pointer accent-[var(--brand)]" />
+                    <label htmlFor="zgoda" className="cursor-pointer text-sm leading-snug text-white/85">
+                      Akceptuję <LegalLink href="/regulamin">regulamin</LegalLink> i <LegalLink href="/polityka-prywatnosci">politykę prywatności</LegalLink>.
+                    </label>
+                  </div>
+                  <FieldDescription id="zgoda-ai">Odpowiedzi w rozmowach z asystentem przetwarza zewnętrzny model AI. Nie wpisuj danych zdrowotnych ani danych kontaktowych klientów.</FieldDescription>
                 </Field>
                 {error ? <p role="alert" className="text-sm text-red-300">{error}</p> : null}
                 <Field>

@@ -6,6 +6,7 @@
 // - Licznik AI czyta GET /api/usage (zużycie z bazy i limit z serwera, src/lib/usage.ts). Limit pilnuje serwer.
 // - Tryb demo i wersja bez bazy kont: hasło nieaktywne z wyjaśnieniem, imię zmienia się tylko w tej przeglądarce.
 import { useCallback, useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "motion/react";
 import { toast } from "sonner";
@@ -687,6 +688,11 @@ export function AccountSettings() {
             <LogOutIcon className="size-4" aria-hidden="true" />Wyloguj
           </button>
         </Section>
+        <nav aria-label="Dokumenty prawne" className="flex flex-wrap items-center gap-x-1 px-1 text-sm text-white/60">
+          <Link href="/regulamin" className="inline-flex min-h-11 items-center px-2 font-semibold text-white/75 underline underline-offset-4 hover:text-white">Regulamin</Link>
+          <span aria-hidden="true">·</span>
+          <Link href="/polityka-prywatnosci" className="inline-flex min-h-11 items-center px-2 font-semibold text-white/75 underline underline-offset-4 hover:text-white">Polityka prywatności</Link>
+        </nav>
       </div>
     </div>
   );

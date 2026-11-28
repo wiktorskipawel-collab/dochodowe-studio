@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { Check, Lock, ArrowRight, PlugZap, ClipboardList, FileText, PlayCircle, Mountain } from "lucide-react";
 import { useJourney } from "@/lib/store";
@@ -14,6 +15,35 @@ const moduleTag = (phase: string) => phase.match(/\((.*)\)$/)?.[1] ?? "";
 
 export function PathMap() {
   const { ready, state } = useJourney();
+  const scroller = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState({ l: false, r: false });
+  const curId = ready ? (currentStep(state)?.id ?? null) : null;
+
+  // Telefon (i wąskie okno): mapa jest szersza niż ramka, więc od razu przewijamy do bieżącego kroku („TERAZ”),
+  // a cienie przy krawędziach i podpis mówią, że mapę można przesunąć (audyt UX K3).
+  useEffect(() => {
+    const el = scroller.current;
+    if (!ready || !el) return;
+    const sync = () => setEdges({ l: el.scrollLeft > 4, r: el.scrollLeft + el.clientWidth < el.scrollWidth - 4 });
+    const node = el.querySelector<HTMLElement>("[data-current]");
+    const frame = requestAnimationFrame(() => {
+      if (node && el.scrollWidth > el.clientWidth + 4) {
+        const x = (parseFloat(node.style.left) / 100) * el.scrollWidth; // pozycja z układu, bez animowanych transformacji
+        const left = Math.max(0, Math.min(el.scrollWidth - el.clientWidth, x + 48 - el.clientWidth / 2)); // +48: podpis „TERAZ …” stoi z prawej
+        const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        el.scrollTo({ left, behavior: reduce ? "auto" : "smooth" });
+      }
+      sync();
+    });
+    el.addEventListener("scroll", sync, { passive: true });
+    window.addEventListener("resize", sync);
+    return () => {
+      cancelAnimationFrame(frame);
+      el.removeEventListener("scroll", sync);
+      window.removeEventListener("resize", sync);
+    };
+  }, [ready, curId]);
+
   if (!ready) return <p className="text-white/70">Wczytuję…</p>;
   const statuses = stepStatuses(state);
   const pct = progressPercent(state);
@@ -21,6 +51,16 @@ export function PathMap() {
   const cur = currentStep(state);
   const phases = [...new Set(STEPS.map((s) => s.phase))];
   const doneCount = STEPS.filter((s) => statuses[s.id] === "done").length;
+  const cta = cur ? (
+    <motion.span whileHover={{ y: -2 }} whileTap={{ scale: 0.96 }} className="inline-flex max-w-full">
+      <Link href={`/krok/${cur.id}`} className="inline-flex min-h-11 max-w-full items-center gap-2 rounded-xl bg-brand px-5 font-bold text-brand-ink shadow-[0_12px_30px_-12px_rgba(114,196,28,.6)] hover:brightness-110">
+        <span className="truncate">{statuses[cur.id] === "draft" ? "Wracam do kroku" : "Idę dalej"}: {cur.title}</span>
+        <ArrowRight className="size-4 shrink-0" aria-hidden="true" />
+      </Link>
+    </motion.span>
+  ) : (
+    <span className="inline-flex min-h-11 items-center gap-2 font-semibold text-brand"><Check className="size-4" aria-hidden="true" />Cała ścieżka zatwierdzona</span>
+  );
 
   return (
     <div className="flex flex-col gap-8">
@@ -34,29 +74,34 @@ export function PathMap() {
             <h2 id="mapa-h" className="mt-1 text-3xl font-extrabold tabular-nums md:text-4xl">{pct}%<span className="ml-2 text-base font-semibold text-white/60">drogi na szczyt</span></h2>
             <p className="mt-1 text-sm text-white/65">{doneCount} z {STEPS.length} kroków · {stage ? stage.name : "etap studia jeszcze nierozpoznany"}</p>
           </div>
-          <div className="pointer-events-auto flex flex-wrap gap-2">
-            <Legend color="bg-brand" text="Zrobione" />
-            <Legend color="bg-orange" text="Teraz" />
-            <Legend color="bg-white/30" text="Przed Tobą" />
+          <div className="pointer-events-auto flex flex-col items-end gap-3">
+            <div className="flex flex-wrap gap-2">
+              <Legend color="bg-brand" text="Zrobione" />
+              <Legend color="bg-orange" text="Teraz" />
+              <Legend color="bg-white/30" text="Przed Tobą" />
+            </div>
+            {/* komputer: główny przycisk nad mapą, bez przewijania (audyt UX W11) */}
+            <div className="hidden text-sm md:flex">{cta}</div>
           </div>
         </div>
-        <div className="overflow-x-auto pt-28 md:pt-16">
-          <div className="min-w-[780px]">
-            <PathTerrain steps={STEPS} statuses={statuses} currentId={cur?.id ?? null} />
+        <div className="relative">
+          <div ref={scroller} className="overflow-x-auto overscroll-x-contain pt-28 md:pt-16">
+            <div className="min-w-[780px]">
+              <PathTerrain steps={STEPS} statuses={statuses} currentId={cur?.id ?? null} />
+            </div>
           </div>
+          <span aria-hidden="true" className={`pointer-events-none absolute inset-y-0 left-0 z-20 w-10 bg-gradient-to-r from-[#030805] to-transparent transition-opacity ${edges.l ? "opacity-100" : "opacity-0"}`} />
+          <span aria-hidden="true" className={`pointer-events-none absolute inset-y-0 right-0 z-20 w-10 bg-gradient-to-l from-[#030805] to-transparent transition-opacity ${edges.r ? "opacity-100" : "opacity-0"}`} />
+          {edges.l || edges.r ? (
+            <p className="pointer-events-none absolute bottom-2 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-full border border-white/10 bg-black/60 px-3 py-1 text-xs text-white/75">
+              <span aria-hidden="true">← </span>Przesuń mapę palcem<span aria-hidden="true"> →</span>
+            </p>
+          ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-2 border-t border-white/10 px-5 py-4 text-sm md:px-6">
-          {cur ? (
-            <motion.span whileHover={{ y: -2 }} whileTap={{ scale: 0.96 }} className="inline-flex">
-              <Link href={`/krok/${cur.id}`} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand px-5 font-bold text-brand-ink shadow-[0_12px_30px_-12px_rgba(114,196,28,.6)] hover:brightness-110">
-                {statuses[cur.id] === "draft" ? "Wracam do kroku" : "Idę dalej"}: {cur.title}<ArrowRight className="size-4" aria-hidden="true" />
-              </Link>
-            </motion.span>
-          ) : (
-            <span className="inline-flex min-h-11 items-center gap-2 font-semibold text-brand"><Check className="size-4" aria-hidden="true" />Cała ścieżka zatwierdzona</span>
-          )}
+          <div className="flex max-w-full md:hidden">{cta}</div>
           <Link href="/ankieta" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/20 px-4 hover:bg-white/10">
-            <ClipboardList className="size-4" aria-hidden="true" />Ankieta i etap
+            <ClipboardList className="size-4" aria-hidden="true" />Popraw ankietę
           </Link>
           {platformAi ? null : (
             <Link href="/polacz" className={`inline-flex min-h-11 items-center gap-2 rounded-xl border px-4 hover:bg-white/10 ${state.ai.mode ? "border-emerald-400/40 text-emerald-200" : "border-white/20"}`}>
@@ -64,6 +109,33 @@ export function PathMap() {
             </Link>
           )}
         </div>
+
+        {/* Telefon: zwięzła lista etapów pod mapą — „gdzie jestem” bez przesuwania mapy; stuknięcie przewija do kafelków etapu. */}
+        <nav aria-label="Etapy ścieżki" className="border-t border-white/10 px-3 py-2 md:hidden">
+          <ol className="flex flex-col">
+            {phases.map((phase, pi) => {
+              const list = STEPS.filter((s) => s.phase === phase);
+              const d = list.filter((s) => statuses[s.id] === "done").length;
+              const here = !!cur && list.some((s) => s.id === cur.id);
+              const all = d === list.length;
+              return (
+                <li key={phase}>
+                  <a href={`#ph-${pi}`} aria-current={here ? "step" : undefined}
+                    className={`flex min-h-11 items-center gap-3 rounded-xl px-2 py-1 text-sm hover:bg-white/5 ${here ? "bg-orange/10 ring-1 ring-orange/40" : ""}`}>
+                    <span className={`grid size-7 shrink-0 place-items-center rounded-full text-xs font-bold ${all ? "bg-brand text-brand-ink" : here ? "bg-orange text-neutral-950" : "border border-white/20 text-white/60"}`}>
+                      {all ? <Check className="size-4" aria-label="zrobione" /> : pi + 1}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className={`block truncate font-semibold ${all || here ? "text-white" : "text-white/70"}`}>{phaseName(phase)}</span>
+                      {here && cur ? <span className="block truncate text-xs font-semibold text-orange">Teraz: krok {cur.no} · {cur.title}</span> : null}
+                    </span>
+                    <span className="shrink-0 text-xs tabular-nums text-white/55">{d}/{list.length}<span className="sr-only"> kroków zatwierdzonych</span></span>
+                  </a>
+                </li>
+              );
+            })}
+          </ol>
+        </nav>
       </motion.section>
 
       {/* MODUŁY: duże kafelki */}

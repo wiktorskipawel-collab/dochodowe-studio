@@ -32,7 +32,7 @@ const TOUR: TourStep[] = [
   { target: "hero", title: "Tu mówi do Ciebie Bartek", body: "Asystent AI Bartka. Na pulpicie zawsze podpowie, co dziś zrobić. Kiedy chcesz pogadać, kliknij jego twarz w rogu ekranu." },
   { target: "next-step", title: "Twój następny krok", body: "Jeden klik i jesteś w środku: krótka lekcja, rozmowa z Bartkiem i gotowy dokument." },
   { target: "progress", title: "Postęp, poziom i seria", body: "Za każdy krok dostajesz XP i odznaki. Seria dni pilnuje, żeby nie stanąć w miejscu." },
-  { target: "milestones", title: "Kamienie milowe", body: "Zamknij etap, a odblokujesz 30 minut rozmowy z Bartkiem na żywo." },
+  { target: "milestones", title: "Kamienie milowe", body: "Za kamienie milowe 2, 4 i 6 odblokujesz 30 minut rozmowy z Bartkiem na żywo." },
   { target: "nav-path", title: "Mapa całej ścieżki", body: "„Twoja ścieżka” pokazuje wszystkie etapy i kroki na jednej mapie. Lekcje masz zebrane w jednym miejscu.", side: "right" },
   { target: "nav-marketing", title: "Mój marketing", body: "Tu lądują zatwierdzone dokumenty: DNA studia, awatar, oferta i strategia. Każdy pobierzesz jednym kliknięciem.", side: "right" },
   { target: "nav-actions", title: "Narzędzia AI", body: "Asystent sprzedaży podpowie, co odpisać leadowi. Do tego analiza reklam, rolki, VSL i narzędzia dla zespołu.", side: "right" },

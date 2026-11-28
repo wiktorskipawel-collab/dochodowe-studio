@@ -11,6 +11,9 @@
 // - stan nie wisi na samym kolorze: zdobyty = pełne zielone koło z ✓, w drodze = pierścień postępu, nieruszony = kłódka;
 // - liczby są w podpisie węzła, w panelu szczegółów i w tabeli („Pokaż dane w tabeli”).
 // Szeroki ekran: szlak falą w poziomie. Wąski: zygzak w dół, jak w Duolingo.
+// Główną osią postępu są KROKI ścieżki; kamienie to nagrody po drodze. Dlatego zamiast „Tu jesteś” węzeł z bieżącym
+// krokiem ma napis „Teraz: krok N” (ten sam numer co na mapie i w „Wracam”), a nieruszony kamień nie ma kłódki
+// (kamienie nie blokują się nawzajem, np. „Lokal” można zrobić w dowolnej chwili).
 // Kamień zdobyty od ostatniej wizyty na pulpicie odblokowuje się z animacją (kłódka odpada, węzeł się zapełnia,
 // rozbłysk, „Odblokowano!”). Co już widziane, pamięta localStorage (ds:kamienie:<e-mail>).
 import Link from "next/link";
@@ -21,12 +24,12 @@ import {
   UsersRound, Video, Wrench, FileText, type LucideIcon,
 } from "lucide-react";
 import type { JourneyState } from "@/lib/store";
-import { CALL_PHASES, milestones, nextMilestone, type MilestoneItem, type MilestoneProgress } from "@/lib/gamification";
+import { currentStep } from "@/lib/journey";
+import { CALL_MILESTONES_TEXT, milestones, nextMilestone, type MilestoneItem, type MilestoneProgress } from "@/lib/gamification";
 import { DataTable } from "@/components/Charts";
 import { play } from "@/lib/sfx";
 
-// Celebration.tsx pokazuje rozmowę z Bartkiem po zamknięciu etapu ścieżki: etapy, które kończą kamień z rozmową.
-export const CALL_AFTER = CALL_PHASES;
+// Link do kalendarza Bartka (nagroda za kamienie 2, 4 i 6, DO ZATWIERDZENIA); bez niego: „Termin ustalisz z zespołem…”. Używa też Celebration.tsx.
 export const CALENDAR = process.env.NEXT_PUBLIC_BARTEK_KALENDARZ ?? "";
 
 const ICON: Record<MilestoneProgress["icon"], LucideIcon> = {
@@ -91,6 +94,7 @@ export function Milestones({ state }: { state: JourneyState }) {
   }, [run, reduce]);
 
   const next = nextMilestone(list);
+  const now = currentStep(state)?.no; // numer bieżącego kroku (oś główna)
   const [picked, setPicked] = useState<string | null>(null);
   const selected = list.find((m) => m.id === picked) ?? next ?? list[0];
   const freshDelay = (id: string) => {
@@ -112,8 +116,8 @@ export function Milestones({ state }: { state: JourneyState }) {
         <div className="max-w-2xl">
           <h2 id="kamienie-h" className="text-lg font-bold">Kamienie milowe</h2>
           <p className="text-sm text-white/70">
-            8 modułów kursu „Dochodowe Studio”. Kamień zdobywasz, gdy zatwierdzisz kroki ścieżki i obejrzysz lekcje modułu.
-            Za kamienie 2, 4 i 6 odblokujesz 30 minut rozmowy z Bartkiem na żywo.
+            Nagrody po drodze: 8 modułów kursu „Dochodowe Studio”. Kamień zdobywasz, gdy zatwierdzisz kroki ścieżki i obejrzysz lekcje modułu.
+            Za kamienie {CALL_MILESTONES_TEXT} odblokujesz 30 minut rozmowy z Bartkiem na żywo.
           </p>
         </div>
         <div className="flex flex-wrap gap-2 text-xs font-semibold">
@@ -125,8 +129,8 @@ export function Milestones({ state }: { state: JourneyState }) {
       <p className="sr-only" aria-live="polite">{freshNames.length ? `Odblokowano kamień milowy: ${freshNames.join(", ")}.` : ""}</p>
 
       <div ref={box} className="relative w-full" style={{ minHeight: width ? undefined : 260 }}>
-        {width ? (wide ? <TrailWide list={list} width={width} selected={selected.id} onPick={setPicked} freshDelay={freshDelay} reduce={reduce} runN={run.n} />
-          : <TrailTall list={list} width={width} selected={selected.id} onPick={setPicked} freshDelay={freshDelay} reduce={reduce} runN={run.n} />) : null}
+        {width ? (wide ? <TrailWide list={list} width={width} selected={selected.id} onPick={setPicked} freshDelay={freshDelay} reduce={reduce} runN={run.n} now={now} />
+          : <TrailTall list={list} width={width} selected={selected.id} onPick={setPicked} freshDelay={freshDelay} reduce={reduce} runN={run.n} now={now} />) : null}
       </div>
 
       <AnimatePresence mode="wait" initial={false}>
@@ -152,6 +156,7 @@ type TrailProps = {
   freshDelay: (id: string) => number | null;
   reduce: boolean;
   runN: number; // numer rundy odblokowań: nowa runda montuje węzeł od nowa i odpala animację
+  now?: string; // numer bieżącego kroku ścieżki
 };
 
 /** Odcinek szlaku między kamieniami: przebyty (oba zdobyte), w drodze (płynie do bieżącego) albo przed Tobą. */
@@ -171,7 +176,7 @@ function Segment({ d, a, b, draw }: { d: string; a: MilestoneProgress; b: Milest
   );
 }
 
-function TrailWide({ list, width, selected, onPick, freshDelay, reduce, runN }: TrailProps) {
+function TrailWide({ list, width, selected, onPick, freshDelay, reduce, runN, now }: TrailProps) {
   const col = width / list.length;
   const H = 268;
   const pos = list.map((_, i) => ({ x: col * (i + 0.5), y: i % 2 ? 158 : 88 }));
@@ -190,7 +195,7 @@ function TrailWide({ list, width, selected, onPick, freshDelay, reduce, runN }: 
       <ol className="absolute inset-0" aria-label="Szlak kamieni milowych">
         {list.map((m, i) => (
           <li key={m.id} className="absolute" style={{ left: pos[i].x, top: pos[i].y, width: 0, height: 0 }}>
-            <Node key={freshDelay(m.id) === null ? "n" : `r${runN}`} m={m} selected={selected === m.id} onPick={onPick} delay={freshDelay(m.id)} reduce={reduce} bubble />
+            <Node key={freshDelay(m.id) === null ? "n" : `r${runN}`} m={m} selected={selected === m.id} onPick={onPick} delay={freshDelay(m.id)} reduce={reduce} now={now} bubble />
             <div className="absolute top-[42px] -translate-x-1/2 text-center" style={{ width: labelW }}>
               <Label m={m} align="center" />
             </div>
@@ -201,7 +206,7 @@ function TrailWide({ list, width, selected, onPick, freshDelay, reduce, runN }: 
   );
 }
 
-function TrailTall({ list, width, selected, onPick, freshDelay, reduce, runN }: TrailProps) {
+function TrailTall({ list, width, selected, onPick, freshDelay, reduce, runN, now }: TrailProps) {
   const row = 104;
   const H = list.length * row;
   const pos = list.map((_, i) => ({ x: width * (i % 2 ? 0.7 : 0.3), y: row / 2 + i * row }));
@@ -221,9 +226,9 @@ function TrailTall({ list, width, selected, onPick, freshDelay, reduce, runN }: 
           const left = i % 2 === 0;
           return (
             <li key={m.id} className="absolute" style={{ left: pos[i].x, top: pos[i].y, width: 0, height: 0 }}>
-              <Node key={freshDelay(m.id) === null ? "n" : `r${runN}`} m={m} selected={selected === m.id} onPick={onPick} delay={freshDelay(m.id)} reduce={reduce} />
+              <Node key={freshDelay(m.id) === null ? "n" : `r${runN}`} m={m} selected={selected === m.id} onPick={onPick} delay={freshDelay(m.id)} reduce={reduce} now={now} />
               <div className={`absolute top-0 -translate-y-1/2 ${left ? "left-[42px] text-left" : "right-[42px] text-right"}`} style={{ width: left ? width - pos[i].x - 46 : pos[i].x - 46 }}>
-                <Label m={m} align={left ? "start" : "end"} chip />
+                <Label m={m} align={left ? "start" : "end"} now={now} chip />
               </div>
             </li>
           );
@@ -233,10 +238,12 @@ function TrailTall({ list, width, selected, onPick, freshDelay, reduce, runN }: 
   );
 }
 
-function Label({ m, align, chip }: { m: MilestoneProgress; align: "center" | "start" | "end"; chip?: boolean }) {
+const nowText = (now?: string) => (now ? `Teraz: krok ${now}` : "Teraz");
+
+function Label({ m, align, chip, now }: { m: MilestoneProgress; align: "center" | "start" | "end"; chip?: boolean; now?: string }) {
   return (
     <div className={`flex flex-col gap-0.5 ${align === "center" ? "items-center" : align === "end" ? "items-end" : "items-start"}`}>
-      {chip && m.current && !m.complete ? <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-brand-ink">Tu jesteś</span> : null}
+      {chip && m.current && !m.complete ? <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-brand-ink">{nowText(now)}</span> : null}
       <span className="text-[13px] font-bold leading-tight"><span className="text-white/55">{m.no}.</span> {m.short}</span>
       <span className={`text-xs leading-tight ${m.complete ? "font-semibold text-brand" : "text-white/60"}`}>
         {m.complete ? "zdobyty" : `${m.done}/${m.total} zadań`}
@@ -247,19 +254,19 @@ function Label({ m, align, chip }: { m: MilestoneProgress; align: "center" | "st
 
 const RAYS = Array.from({ length: 10 }, (_, i) => i * 36);
 
-function Node({ m, selected, onPick, delay, reduce, bubble }: { m: MilestoneProgress; selected: boolean; onPick: (id: string) => void; delay: number | null; reduce: boolean; bubble?: boolean }) {
+function Node({ m, selected, onPick, delay, reduce, bubble, now }: { m: MilestoneProgress; selected: boolean; onPick: (id: string) => void; delay: number | null; reduce: boolean; bubble?: boolean; now?: string }) {
   const Icon = ICON[m.icon];
   const r = 29;
   const c = 2 * Math.PI * r;
   const fresh = delay !== null && m.complete;
-  const label = `Kamień ${m.no}: ${m.title}. ${stateLabel(m)}, ${m.done} z ${m.total} zadań.${m.call ? ` Nagroda: 30 minut z Bartkiem${m.complete ? ", odblokowana" : ""}.` : ""}${m.current && !m.complete ? " Tu jesteś." : ""}`;
+  const label = `Kamień ${m.no}: ${m.title}. ${stateLabel(m)}, ${m.done} z ${m.total} zadań.${m.call ? ` Nagroda: 30 minut z Bartkiem${m.complete ? ", odblokowana" : ""}.` : ""}${m.current && !m.complete ? ` Tu jest Twój bieżący krok${now ? ` (${now})` : ""}.` : ""}`;
   return (
     <div className="absolute -left-8 -top-8 size-16">
       {bubble && m.current && !m.complete ? (
         <motion.span
           className="absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-white px-2 py-1 text-[10px] font-extrabold uppercase tracking-wider text-brand-ink shadow-lg after:absolute after:-bottom-1 after:left-1/2 after:size-2 after:-translate-x-1/2 after:rotate-45 after:bg-white"
           animate={reduce ? undefined : { y: [0, -4, 0] }} transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }} aria-hidden="true"
-        >Tu jesteś</motion.span>
+        >{nowText(now)}</motion.span>
       ) : null}
       <motion.button
         type="button" onClick={() => { onPick(m.id); play("tap"); }} aria-pressed={selected} aria-controls="kamien-panel" aria-label={label}
@@ -312,14 +319,12 @@ function Node({ m, selected, onPick, delay, reduce, bubble }: { m: MilestoneProg
           </>
         ) : null}
 
-        {/* znaczki: zdobyty ✓ / nieruszony 🔒, nagroda 30 min z Bartkiem */}
+        {/* znaczki: zdobyty ✓ (nieruszony bez kłódki: kamienie się nie blokują), nagroda 30 min z Bartkiem */}
         {m.complete ? (
           <motion.span className="absolute -bottom-0.5 -right-0.5 grid size-6 place-items-center rounded-full bg-white text-brand-ink shadow" initial={fresh ? { scale: 0 } : false} animate={{ scale: 1 }}
             transition={{ delay: fresh ? (delay ?? 0) + 0.95 : 0, type: "spring", stiffness: 500, damping: 18 }} aria-hidden="true">
             <Check className="size-4" strokeWidth={3} />
           </motion.span>
-        ) : !m.done ? (
-          <span className="absolute -bottom-0.5 -right-0.5 grid size-6 place-items-center rounded-full bg-[#1a2a1c] text-white/60 ring-1 ring-white/15" aria-hidden="true"><Lock className="size-3" /></span>
         ) : null}
         {m.call ? (
           <span className={`absolute -right-1 -top-1 grid size-6 place-items-center rounded-full ${m.complete ? "bg-orange text-neutral-950" : "bg-[#1a2a1c] text-orange ring-1 ring-orange/60"}`} aria-hidden="true">
@@ -417,7 +422,7 @@ function Panel({ m }: { m: MilestoneProgress }) {
                 <a href={CALENDAR} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-orange px-4 text-sm font-bold text-neutral-950 hover:brightness-105">
                   <CalendarCheck className="size-4" aria-hidden="true" />Umów 30 min z Bartkiem
                 </a>
-              ) : <p className="text-sm text-white/80">Odblokowana. Link do kalendarza Bartka pojawi się tutaj.</p>
+              ) : <p className="text-sm text-white/80"><strong className="text-white">Nagroda odblokowana.</strong> Termin ustalisz z zespołem Dochodowego Studia.</p>
             ) : <p className="flex items-center gap-1.5 text-sm text-white/70"><Lock className="size-3.5" aria-hidden="true" />Odblokujesz ją po zdobyciu kamienia.</p>}
           </div>
         ) : (

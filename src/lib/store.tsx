@@ -9,7 +9,7 @@ import type { User } from "@supabase/supabase-js";
 import { getSupabase, supabaseEnabled } from "@/lib/supabase/client";
 import { signOutRemote } from "@/lib/auth";
 import type { ConnectionMode } from "@/lib/models";
-import { XP, levelOf, xpTotal, badges, phaseProgress, type Badge } from "@/lib/gamification";
+import { XP, levelOf, xpTotal, badges, phaseProgress, milestones, type Badge } from "@/lib/gamification";
 import { STEPS, stepStatuses } from "@/lib/journey";
 import { demoState } from "@/lib/demo";
 
@@ -28,6 +28,7 @@ export type Reward = {
   badges?: Badge[]; // nowe odznaki
   phase?: string; // zamknięty etap
   unlocked?: { id: string; no: string; title: string }; // odblokowany kolejny krok
+  milestone?: { no: number; title: string; call: boolean }; // nowo zdobyty kamień milowy (call = 30 min z Bartkiem)
 };
 
 /** Lokal z kalkulatora /lokal. Pola formularza jako tekst (tak jak w arkuszu); liczby liczy strona przy wyświetlaniu. */
@@ -92,7 +93,8 @@ type Ctx = {
   setAi: (ai: JourneyState["ai"]) => void;
   saveSurvey: (answers: Record<string, string>, stage: string) => void;
   acceptPath: () => void;
-  setChat: (stepId: string, messages: ChatMessage[]) => void;
+  setChat: (stepId: string, messages: ChatMessage[]) => void; // sam zapis rozmowy, bez XP
+  rewardReply: (ref: string) => void; // XP za wiadomość: dopiero po UDANEJ odpowiedzi asystenta (krok albo narzędzie)
   saveDoc: (docId: string, content: string, status?: DocStatus, title?: string) => void;
   toggleWatched: (lessonId: string) => void;
   markWatched: (lessonIds: string[]) => void;
@@ -112,6 +114,14 @@ const JourneyContext = createContext<Ctx | null>(null);
 
 export function JourneyProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<JourneyState>(EMPTY);
+  // Zawsze najnowszy stan, także między renderami. Strumień odpowiedzi AI woła setChat wiele razy z jednej (starej)
+  // klatki, a stare domknięcie nadpisywało stan: XP „wskakiwało” i znikało. Każda zmiana przechodzi przez put().
+  const live = useRef<JourneyState>(EMPTY);
+  const put = useCallback((next: JourneyState) => {
+    live.current = next;
+    setState(next);
+  }, []);
+  const update = useCallback((fn: (cur: JourneyState) => JourneyState) => put(fn(live.current)), [put]);
   const [ready, setReady] = useState(false);
   const [reward, setReward] = useState<Reward | null>(null);
 
@@ -133,6 +143,7 @@ export function JourneyProvider({ children }: { children: ReactNode }) {
 
     const sb = getSupabase();
     if (!sb) {
+      if (local) live.current = local;
       // eslint-disable-next-line react-hooks/set-state-in-effect -- jednorazowe wczytanie z przeglądarki po zamontowaniu
       if (local) setState(local);
       setReady(true);
@@ -141,17 +152,27 @@ export function JourneyProvider({ children }: { children: ReactNode }) {
 
     const loadUser = async (user: User) => {
       const meta = user.user_metadata as { full_name?: string; name?: string };
+      // Zgoda z formularza rejestracji (Google nie przyjmuje danych w logowaniu): zapisz ją na koncie raz.
+      try {
+        const zgoda = localStorage.getItem("ds:zgoda");
+        if (zgoda) {
+          localStorage.removeItem("ds:zgoda");
+          if (!(user.user_metadata as { zgoda_regulamin?: string }).zgoda_regulamin) void sb.auth.updateUser({ data: { zgoda_regulamin: zgoda, zgoda_wersja: "robocza-2026-11" } });
+        }
+      } catch {
+        // brak localStorage: zgoda z formularza e-mail i tak jest zapisana przy rejestracji
+      }
       const profile = { name: meta.full_name ?? meta.name ?? (user.email ?? "").split("@")[0], email: user.email ?? "" };
       const { data, error } = await sb.from("journeys").select("state").eq("user_id", user.id).maybeSingle();
       userId.current = user.id;
       if (error) setCloud("error");
       const remote = data?.state as Partial<JourneyState> | undefined;
-      if (remote?.version === 1) setState({ ...EMPTY, ...remote, demo: false, profile });
-      else if (local && !local.demo && local.profile?.email === profile.email) setState({ ...local, profile });
+      if (remote?.version === 1) put({ ...EMPTY, ...remote, demo: false, profile });
+      else if (local && !local.demo && local.profile?.email === profile.email) put({ ...local, profile });
       else {
         // Konto bez zapisanej ścieżki = nowa (albo wyzerowana) osoba: pełne pierwsze powitanie Bartka.
         if (!error) forgetHello(profile.email, null);
-        setState({ ...EMPTY, profile });
+        put({ ...EMPTY, profile });
       }
       setCloud(error ? "error" : "saved");
       setReady(true);
@@ -164,16 +185,16 @@ export function JourneyProvider({ children }: { children: ReactNode }) {
           if (session.user.id !== userId.current) setTimeout(() => void loadUser(session.user), 0);
         } else if (event === "INITIAL_SESSION") {
           userId.current = null;
-          setState(EMPTY);
+          put(EMPTY);
           setReady(true);
         }
       } else if (event === "SIGNED_OUT") {
         userId.current = null;
-        setState(EMPTY);
+        put(EMPTY);
       }
     });
     return () => sub.subscription.unsubscribe();
-  }, []);
+  }, [put]);
 
   // Zapis: kopia w przeglądarce zawsze, a z Supabase — do bazy (z opóźnieniem, żeby nie zapisywać każdej litery).
   useEffect(() => {
@@ -198,20 +219,20 @@ export function JourneyProvider({ children }: { children: ReactNode }) {
     const url = new URL(window.location.href);
     const flag = url.searchParams.get("pokaz");
     if (flag !== "1" && flag !== "0") return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- jednorazowe odczytanie przełącznika z adresu
-    setState((cur) => ({ ...cur, preview: flag === "1" }));
+    // jednorazowe odczytanie przełącznika z adresu
+    put({ ...live.current, preview: flag === "1" });
     url.searchParams.delete("pokaz");
     window.history.replaceState(null, "", url.pathname + url.search + url.hash);
-  }, [ready]);
+  }, [ready, put]);
 
   /** Zmiana stanu + zdarzenie (XP). Pokazuje nagrodę, a przy awansie — nowy poziom. */
   const commit = useCallback((prev: JourneyState, next: JourneyState, event?: Omit<JourneyEvent, "at">, title?: string, big?: boolean) => {
-    if (!event) return setState(next);
+    if (!event) return put(next);
     const before = levelOf(xpTotal(prev.events));
     const events = [...next.events, { ...event, at: new Date().toISOString() }];
     const after = levelOf(xpTotal(events));
     const done = { ...next, events };
-    setState(done);
+    put(done);
     // co się właśnie odblokowało
     const had = new Set(badges(prev).filter((b) => b.earned).map((b) => b.id));
     const fresh = badges(done).filter((b) => b.earned && !had.has(b.id));
@@ -221,85 +242,100 @@ export function JourneyProvider({ children }: { children: ReactNode }) {
     const stAfter = stepStatuses(done);
     const opened = STEPS.find((st) => stBefore[st.id] === "locked" && stAfter[st.id] !== "locked");
     const levelUp = after.index > before.index ? { index: after.index, name: after.name } : undefined;
-    if (title || levelUp || fresh.length || phase) {
+    const stonesBefore = new Set(milestones(prev).filter((m) => m.complete).map((m) => m.id));
+    const stone = milestones(done).find((m) => m.complete && !stonesBefore.has(m.id));
+    if (title || levelUp || fresh.length || phase || stone) {
       setReward({
         id: Date.now(),
         kind: event.type,
         xp: XP[event.type],
         title: title ?? "Postęp!",
         levelUp,
-        big: big || !!levelUp || !!fresh.length || !!phase,
+        big: big || !!levelUp || !!fresh.length || !!phase || !!stone,
         badges: fresh.length ? fresh : undefined,
         phase,
         unlocked: opened ? { id: opened.id, no: opened.no, title: opened.title } : undefined,
+        milestone: stone ? { no: stone.no, title: stone.title, call: !!stone.call } : undefined,
       });
     }
-  }, []);
+  }, [put]);
 
   const value = useMemo<Ctx>(() => {
-    const s = state;
-    const once = (type: JourneyEvent["type"], ref?: string) => !s.events.some((e) => e.type === type && e.ref === ref);
+    // Działania czytają najnowszy stan (live.current) w chwili wywołania, nie stan z renderu, w którym powstały.
+    const once = (s: JourneyState, type: JourneyEvent["type"], ref?: string) => !s.events.some((e) => e.type === type && e.ref === ref);
     return {
       ready,
       cloud,
       state,
       reward,
       clearReward: () => setReward(null),
-      setAi: (ai) => commit(s, { ...s, ai }, !s.ai.mode && ai.mode ? { type: "ai" } : undefined, ai.mode && !s.ai.mode ? "AI połączone" : undefined),
-      saveSurvey: (answers, stage) => commit(s, { ...s, survey: answers, stage }, once("survey") ? { type: "survey" } : undefined, once("survey") ? "Ankieta gotowa" : undefined),
-      acceptPath: () => commit(s, { ...s, pathAccepted: true }, once("path") ? { type: "path" } : undefined, once("path") ? "Ścieżka zaakceptowana" : undefined),
-      setChat: (stepId, messages) => {
-        const prevUser = (s.chats[stepId] ?? []).filter((m) => m.role === "user").length;
-        const nextUser = messages.filter((m) => m.role === "user").length;
-        commit(s, { ...s, chats: { ...s.chats, [stepId]: messages } }, nextUser > prevUser ? { type: "msg", ref: stepId } : undefined);
+      setAi: (ai) => {
+        const s = live.current;
+        commit(s, { ...s, ai }, !s.ai.mode && ai.mode ? { type: "ai" } : undefined, ai.mode && !s.ai.mode ? "AI połączone" : undefined);
+      },
+      saveSurvey: (answers, stage) => {
+        const s = live.current;
+        commit(s, { ...s, survey: answers, stage }, once(s, "survey") ? { type: "survey" } : undefined, once(s, "survey") ? "Ankieta gotowa" : undefined);
+      },
+      acceptPath: () => {
+        const s = live.current;
+        commit(s, { ...s, pathAccepted: true }, once(s, "path") ? { type: "path" } : undefined, once(s, "path") ? "Ścieżka zaakceptowana" : undefined);
+      },
+      setChat: (stepId, messages) => update((cur) => ({ ...cur, chats: { ...cur.chats, [stepId]: messages } })),
+      rewardReply: (ref) => {
+        const s = live.current;
+        commit(s, s, { type: "msg", ref });
       },
       saveDoc: (docId, content, status = "draft", title) => {
+        const s = live.current;
         const prev = s.docs[docId];
         const next = { ...s, docs: { ...s.docs, [docId]: { content, status, updatedAt: new Date().toISOString() } } };
-        if (status === "approved" && prev?.status !== "approved" && once("approve", docId)) {
+        if (status === "approved" && prev?.status !== "approved" && once(s, "approve", docId)) {
           commit(s, next, { type: "approve", ref: docId }, title ? `Zatwierdzone: ${title}` : "Dokument zatwierdzony", true);
-        } else if (!prev && once("draft", docId)) {
+        } else if (!prev && once(s, "draft", docId)) {
           commit(s, next, { type: "draft", ref: docId }, "Pierwszy szkic");
         } else commit(s, next);
       },
       toggleWatched: (lessonId) => {
+        const s = live.current;
         const on = !s.watched[lessonId];
         const next = { ...s, watched: { ...s.watched, [lessonId]: on } };
-        commit(s, next, on && once("lesson", lessonId) ? { type: "lesson", ref: lessonId } : undefined, on && once("lesson", lessonId) ? "Lekcja obejrzana" : undefined);
+        commit(s, next, on && once(s, "lesson", lessonId) ? { type: "lesson", ref: lessonId } : undefined, on && once(s, "lesson", lessonId) ? "Lekcja obejrzana" : undefined);
       },
       markWatched: (ids) => {
+        const s = live.current;
         const fresh = ids.filter((id) => !s.watched[id]);
         if (!fresh.length) return;
         const watched = { ...s.watched };
         for (const id of fresh) watched[id] = true;
-        const scored = fresh.filter((id) => once("lesson", id));
+        const scored = fresh.filter((id) => once(s, "lesson", id));
         const now = new Date().toISOString();
         const earlier = scored.slice(0, -1).map((ref) => ({ type: "lesson" as const, ref, at: now }));
         const last = scored.at(-1);
         commit(s, { ...s, watched, events: [...s.events, ...earlier] }, last ? { type: "lesson", ref: last } : undefined, last ? "Lekcja zaliczona" : undefined);
       },
-      setPreview: (on) => setState((cur) => ({ ...cur, preview: on })),
-      setOnboarded: () => setState((cur) => (cur.onboarded ? cur : { ...cur, onboarded: new Date().toISOString() })),
-      setToolIntro: (key) => setState((cur) => (cur.toolIntro?.[key] ? cur : { ...cur, toolIntro: { ...cur.toolIntro, [key]: new Date().toISOString() } })),
-      setLokale: (update) => setState((cur) => ({ ...cur, lokale: update(cur.lokale ?? []) })),
-      setNajem: (update) => setState((cur) => ({ ...cur, najem: update(cur.najem ?? {}) })),
-      reset: () => setState(EMPTY),
+      setPreview: (on) => update((cur) => ({ ...cur, preview: on })),
+      setOnboarded: () => update((cur) => (cur.onboarded ? cur : { ...cur, onboarded: new Date().toISOString() })),
+      setToolIntro: (key) => update((cur) => (cur.toolIntro?.[key] ? cur : { ...cur, toolIntro: { ...cur.toolIntro, [key]: new Date().toISOString() } })),
+      setLokale: (fn) => update((cur) => ({ ...cur, lokale: fn(cur.lokale ?? []) })),
+      setNajem: (fn) => update((cur) => ({ ...cur, najem: fn(cur.najem ?? {}) })),
+      reset: () => put(EMPTY),
       loadDemo: () => {
         const demo = demoState();
         forgetHello(demo.profile?.email, null); // demo zawsze zaczyna się pełnym przywitaniem
-        setState(demo);
+        put(demo);
       },
       // Nowa osoba albo wyjście z demo = czysta ścieżka, żeby zawsze przeszła wejście (Połącz AI → ankieta).
-      signIn: (profile) => setState((cur) => (cur.demo || !cur.profile || cur.profile.email !== profile.email ? { ...EMPTY, profile } : { ...cur, profile })),
-      setProfileName: (name) => setState((cur) => (cur.profile ? { ...cur, profile: { ...cur.profile, name } } : cur)),
+      signIn: (profile) => update((cur) => (cur.demo || !cur.profile || cur.profile.email !== profile.email ? { ...EMPTY, profile } : { ...cur, profile })),
+      setProfileName: (name) => update((cur) => (cur.profile ? { ...cur, profile: { ...cur.profile, name } } : cur)),
       signOut: () => {
-        forgetHello(s.profile?.email, "out");
+        forgetHello(live.current.profile?.email, "out");
         userId.current = null;
         void signOutRemote();
-        setState(EMPTY);
+        put(EMPTY);
       },
     };
-  }, [ready, cloud, state, reward, commit]);
+  }, [ready, cloud, state, reward, commit, put, update]);
 
   return <JourneyContext.Provider value={value}>{children}</JourneyContext.Provider>;
 }

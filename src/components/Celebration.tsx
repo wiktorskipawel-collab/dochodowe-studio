@@ -2,7 +2,7 @@
 
 // Nagrody w stylu Duolingo (prośba Pawła 2026-11-27): dużo fanfar i odblokowań.
 // - Drobne działanie (lekcja, szkic, ankieta): toast u góry z „dzyń” i licznikiem XP.
-// - Duże (zatwierdzony krok, nowa odznaka, zamknięty etap, nowy poziom): pełny ekran, ekrany po kolei
+// - Duże (zatwierdzony krok, nowa odznaka, zamknięty etap, zdobyty kamień milowy, nowy poziom): pełny ekran, ekrany po kolei
 //   z konfetti i fanfarą, a na końcu przycisk do odblokowanego kroku.
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -11,12 +11,12 @@ import { ScrambleTextPlugin } from "gsap/ScrambleTextPlugin";
 import { useGSAP } from "@gsap/react";
 import confetti from "canvas-confetti";
 import { AnimatePresence, animate, motion, useReducedMotion } from "motion/react";
-import { ArrowRight, Check, Lock, LockOpen, Sparkles, Trophy, Video, Zap, CalendarCheck } from "lucide-react";
+import { ArrowRight, Check, Flag, Lock, LockOpen, Sparkles, Trophy, Video, Zap, CalendarCheck } from "lucide-react";
 import { useJourney, type Reward } from "@/lib/store";
 import { play, type Sfx } from "@/lib/sfx";
 import { AssistantAvatar } from "@/components/Assistant";
 import { BadgeIcon } from "@/components/BadgeIcon";
-import { CALL_AFTER, CALENDAR } from "@/components/Milestones";
+import { CALENDAR } from "@/components/Milestones";
 import type { Badge } from "@/lib/gamification";
 import { flyXp } from "@/lib/fx";
 
@@ -25,10 +25,12 @@ gsap.registerPlugin(ScrambleTextPlugin, useGSAP);
 const COLORS = ["#72c41c", "#ffffff", "#dd9933", "#1a7f2a", "#b5e86b"];
 const short = (phase: string) => phase.replace(/\s*\(.*\)$/, "");
 
+// Nagroda „30 minut z Bartkiem” = za kamienie milowe 2, 4 i 6 (MilestoneDef.call w gamification.ts), nie za etap ścieżki.
 type Screen =
   | { type: "approve"; reward: Reward }
   | { type: "badge"; badge: Badge; xp?: number }
   | { type: "phase"; phase: string }
+  | { type: "milestone"; no: number; title: string; call: boolean }
   | { type: "level"; index: number; name: string };
 
 function screensOf(r: Reward): Screen[] {
@@ -36,6 +38,7 @@ function screensOf(r: Reward): Screen[] {
   if (r.kind === "approve") out.push({ type: "approve", reward: r });
   r.badges?.forEach((b, i) => out.push({ type: "badge", badge: b, xp: i === 0 && r.kind !== "approve" ? r.xp : undefined }));
   if (r.phase) out.push({ type: "phase", phase: r.phase });
+  if (r.milestone) out.push({ type: "milestone", ...r.milestone });
   if (r.levelUp) out.push({ type: "level", index: r.levelUp.index, name: r.levelUp.name });
   return out;
 }
@@ -112,10 +115,10 @@ function Fanfare({ reward, screens, onDone }: { reward: Reward; screens: Screen[
     play(sfx);
     const timers: ReturnType<typeof setTimeout>[] = [];
     if (s.type === "approve" && s.reward.unlocked) timers.push(setTimeout(() => play("unlock"), 1100));
-    if (s.type === "phase") timers.push(setTimeout(() => play("unlock"), 900));
+    if (s.type === "phase" || s.type === "milestone") timers.push(setTimeout(() => play("unlock"), 900));
     if (!reduce) {
       const burst = (x: number, n = 70) => confetti({ particleCount: n, spread: 80, startVelocity: 45, origin: { x, y: 0.7 }, colors: COLORS, zIndex: 95, disableForReducedMotion: true });
-      if (s.type === "approve" || s.type === "phase") { burst(0.2); burst(0.8); }
+      if (s.type === "approve" || s.type === "phase" || s.type === "milestone") { burst(0.2); burst(0.8); }
       if (s.type === "level") { burst(0.5, 160); timers.push(setTimeout(() => { burst(0.15); burst(0.85); }, 350)); }
       if (s.type === "badge") confetti({ particleCount: 50, spread: 360, startVelocity: 25, gravity: 0.6, origin: { x: 0.5, y: 0.42 }, colors: ["#dd9933", "#f2c472", "#ffffff"], shapes: ["star"], scalar: 1.1, zIndex: 95, disableForReducedMotion: true });
     }
@@ -170,13 +173,27 @@ function Fanfare({ reward, screens, onDone }: { reward: Reward; screens: Screen[
                 <Burst tone="orange"><Trophy className="size-16" aria-hidden="true" /></Burst>
                 <p className="mt-6 text-xs font-bold uppercase tracking-[0.2em] text-orange">Etap zamknięty</p>
                 <h2 className="mt-1 text-3xl font-extrabold">{short(s.phase)}</h2>
-                {CALL_AFTER.has(s.phase) ? (
+                <p className="mt-3 text-white/75">Kolejny etap ścieżki stoi otworem.</p>
+              </>
+            ) : s.type === "milestone" ? (
+              <>
+                <Burst tone="orange"><Flag className="size-16" aria-hidden="true" /></Burst>
+                <p className="mt-6 text-xs font-bold uppercase tracking-[0.2em] text-orange">Kamień milowy zdobyty</p>
+                <h2 className="mt-1 text-3xl font-extrabold">Kamień {s.no}: {s.title}</h2>
+                {s.call ? (
                   <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }}
-                    className="mt-6 flex w-full items-center gap-3 rounded-2xl border border-orange/50 bg-orange/10 p-4 text-left">
-                    <UnlockIcon tone="orange" />
-                    <span><span className="block text-xs font-bold uppercase tracking-wider text-orange">Odblokowano</span><strong>30 minut rozmowy z Bartkiem na żywo</strong></span>
+                    className="mt-6 flex w-full flex-col gap-3 rounded-2xl border border-orange/50 bg-orange/10 p-4 text-left">
+                    <div className="flex items-center gap-3">
+                      <UnlockIcon tone="orange" />
+                      <span><span className="block text-xs font-bold uppercase tracking-wider text-orange">Odblokowano</span><strong>30 minut rozmowy z Bartkiem na żywo</strong></span>
+                    </div>
+                    {CALENDAR ? (
+                      <a href={CALENDAR} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-orange px-4 text-sm font-extrabold text-neutral-950 hover:brightness-105">
+                        <CalendarCheck className="size-4" aria-hidden="true" />Umów 30 min z Bartkiem<span className="sr-only"> (w nowej karcie)</span>
+                      </a>
+                    ) : <p className="text-sm text-white/80">Termin ustalisz z zespołem Dochodowego Studia. Nagroda czeka też na pulpicie, w kamieniach milowych.</p>}
                   </motion.div>
-                ) : <p className="mt-3 text-white/75">Kolejny etap ścieżki stoi otworem.</p>}
+                ) : <p className="mt-3 text-white/75">Moduł kursu zamknięty. Flaga na szlaku jest Twoja.</p>}
               </>
             ) : (
               <>
@@ -190,11 +207,7 @@ function Fanfare({ reward, screens, onDone }: { reward: Reward; screens: Screen[
         </AnimatePresence>
 
         <div className="mt-8 flex w-full flex-col items-center gap-2">
-          {last && s.type === "phase" && CALL_AFTER.has(s.phase) && CALENDAR ? (
-            <a ref={primary as React.Ref<HTMLAnchorElement>} href={CALENDAR} target="_blank" rel="noopener noreferrer" onClick={onDone} className={`${btn} bg-orange text-neutral-950`}>
-              <CalendarCheck className="size-5" aria-hidden="true" />Umów 30 min z Bartkiem
-            </a>
-          ) : last && unlocked ? (
+          {last && unlocked ? (
             <Link ref={primary as React.Ref<HTMLAnchorElement>} href={`/krok/${unlocked.id}`} onClick={onDone} className={`${btn} bg-brand text-brand-ink`}>
               Przejdź do kroku {unlocked.no}<ArrowRight className="size-5" aria-hidden="true" />
             </Link>
@@ -203,7 +216,7 @@ function Fanfare({ reward, screens, onDone }: { reward: Reward; screens: Screen[
               {last ? "Super!" : "Dalej"}{last ? null : <ArrowRight className="size-5" aria-hidden="true" />}
             </button>
           )}
-          {last && (unlocked || (s.type === "phase" && CALL_AFTER.has(s.phase) && CALENDAR)) ? (
+          {last && unlocked ? (
             <button type="button" onClick={onDone} className="min-h-11 rounded-xl px-4 text-sm font-semibold text-white/65 hover:bg-white/10 hover:text-white">Później</button>
           ) : null}
           {screens.length > 1 ? (

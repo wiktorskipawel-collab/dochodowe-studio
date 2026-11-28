@@ -296,3 +296,32 @@ body::before {
   --viz-st-draft: #e0b552;
   --viz-st-todo: #4b8fdb;
 }
+
+/* Poprawka rozmycia (audyt UX 2026-11-27, K1): kompilator CSS (Lightning CSS) z pary „backdrop-filter” + „-webkit-backdrop-filter”
+   zostawiał tylko wersję z prefiksem -webkit-, której Chrome, Edge i Firefox nie znają — .glass-strong nie rozmywał tła.
+   Tu sama właściwość bez prefiksu (prefiks dla Safari kompilator dopisze sam, we właściwej kolejności).
+   .glass-card celowo bez zmian: dziesiątki kart z rozmyciem nad nieruchomym tłem spowalniają przewijanie na telefonie. */
+@layer components {
+  .glass-strong {
+    backdrop-filter: blur(28px);
+  }
+}
+
+/* Ekrany dotykowe: każdy cel kliknięcia ma co najmniej 44 px (przegląd UX 2026-11-27).
+   Tylko przy wskaźniku „coarse”, żeby nie zmieniać gęstości układu na komputerze. */
+@media (pointer: coarse) {
+  [data-slot="button"],
+  [data-slot="input"],
+  [data-slot="dropdown-menu-item"],
+  [data-slot="dropdown-menu-checkbox-item"],
+  [data-slot="dropdown-menu-radio-item"],
+  [data-slot="dropdown-menu-sub-trigger"],
+  [data-slot="select-trigger"],
+  [data-slot="select-item"] {
+    min-height: 44px;
+  }
+  [data-slot="sheet-close"] {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}

@@ -3,9 +3,11 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { motion } from "motion/react";
-import { LoaderCircle, FileText, Check, PlayCircle, ClipboardCopy, ExternalLink, Wand2, ArrowRight, Lock, Settings, Download, MessagesSquare } from "lucide-react";
+import { LoaderCircle, FileText, Check, PlayCircle, ClipboardCopy, ExternalLink, Wand2, ArrowRight, Lock, Settings, Download, MessagesSquare, Clock, Sparkles } from "lucide-react";
 import { useJourney, type ChatMessage } from "@/lib/store";
 import { STEPS, stepStatuses, contextDocs } from "@/lib/journey";
+import { XP, lessonDone, watchSeconds } from "@/lib/gamification";
+import { wideoLekcji } from "@/lib/kursy";
 import type { Lesson, Step } from "@/lib/journey-types";
 import { buildManualPrompt } from "@/lib/assistant";
 import { CHAT_LIMITS, activeAi } from "@/lib/models";
@@ -22,14 +24,19 @@ import { AssistantAvatar, ASSISTANT_NAME } from "@/components/Assistant";
 import { ChatComposer, UserMessageBody, composeUserMessage, type ImageDraft } from "@/components/ChatComposer";
 import { HowItWorks, IntroDialog, useIntro } from "@/components/ToolIntro";
 import { StepTools } from "@/components/StepTools";
+import { ApproveDialog, useDocReview } from "@/components/ApproveDialog";
+import { useWatchCountdown, countdown } from "@/components/WatchTimer";
 
 // Krok prowadzony przez Bartka (decyzja Pawła 2026-11-27): zapowiedź → lekcja (odhaczenie) → rozmowa → dokument → zatwierdzenie.
 // Obok: „Narzędzia do tego kroku” (StepTools, panel boczny) i zwijane „Jak to działa” czatu kroku (pierwszy raz: okienko).
 // Rozmowa przyjmuje tekst, dyktowanie, zdjęcia, nagrania i transkrypcje (ChatComposer).
+// Przegląd UX 2026-11-27: XP za wiadomość (rewardReply) dopiero po udanej odpowiedzi; lekcję odhacza się dopiero po ok. 30 s
+// z otwartym odtwarzaczem (WatchTimer.tsx), każdą osobno; zatwierdzenie przez okno „Czy krok jest skończony?” (ApproveDialog.tsx)
+// z listą exitCriteria i progiem kompletności dokumentu, plus „Sprawdź mój dokument” (asystent, bez XP).
 const STAGES = ["Lekcja", "Rozmowa z Bartkiem", "Dokument", "Zatwierdzenie"] as const;
 
 export function StepWorkspace({ stepId }: { stepId: string }) {
-  const { ready, state, setChat, saveDoc, markWatched } = useJourney();
+  const { ready, state, setChat, rewardReply, saveDoc, markWatched } = useJourney();
   const step = STEPS.find((s) => s.id === stepId)!;
   const statuses = stepStatuses(state);
   const status = statuses[stepId];
@@ -38,6 +45,8 @@ export function StepWorkspace({ stepId }: { stepId: string }) {
   const doc = state.docs[step.docId];
   const [draft, setDraft] = useState<string | null>(null);
   const docText = draft ?? doc?.content ?? "";
+  const [approving, setApproving] = useState(false);
+  const docReview = useDocReview(step);
 
   if (!ready) return <p className="text-white/70">Wczytuję…</p>;
 
@@ -58,7 +67,7 @@ export function StepWorkspace({ stepId }: { stepId: string }) {
 
   const approved = doc?.status === "approved";
   const ai = activeAi(state.ai);
-  const lessonsDone = step.lessons.every((l) => state.watched[l.id]);
+  const lessonsDone = step.lessons.every((l) => lessonDone(state, l.id)); // to samo „zaliczona” co na /lekcje i na pulpicie
   const stage = !lessonsDone ? 0 : approved ? 3 : docText.trim() ? 2 : 1;
   const name = (state.profile?.name ?? "").trim().split(/\s+/)[0];
   const intro = introLines(step, name, lessonsDone);
@@ -74,12 +83,12 @@ export function StepWorkspace({ stepId }: { stepId: string }) {
               <div className="glass-card flex flex-col gap-5 rounded-2xl p-4 md:p-5">
                 {intro.map((line, i) => <BartekLine key={i} text={line} />)}
               </div>
-              <LessonGate lessons={step.lessons} watched={state.watched} onDone={() => markWatched(step.lessons.map((l) => l.id))} />
+              <LessonGate lessons={step.lessons} isDone={(l) => lessonDone(state, l.id)} onWatched={(id) => markWatched([id])} />
             </>
           ) : ai?.mode === "manual" ? (
             <ManualMode stepId={stepId} onPaste={(t) => { setDraft(t); }} />
           ) : ai ? (
-            <AssistantChat stepId={stepId} prelude={intro} provider={ai.mode} model={ai.model} messages={state.chats[stepId] ?? []} onChange={(m) => setChat(stepId, m)} onDocument={(t) => setDraft(t)} />
+            <AssistantChat stepId={stepId} prelude={intro} provider={ai.mode} model={ai.model} messages={state.chats[stepId] ?? []} onChange={(m) => setChat(stepId, m)} onReplied={() => rewardReply(stepId)} onDocument={(t) => setDraft(t)} />
           ) : (
             <div className="glass-card flex flex-col items-start gap-3 rounded-2xl p-6">
               <h2 className="text-lg font-semibold">Połącz swój ChatGPT, żeby zacząć rozmowę</h2>
@@ -111,9 +120,14 @@ export function StepWorkspace({ stepId }: { stepId: string }) {
                 className="inline-flex min-h-11 items-center rounded-xl border border-white/20 px-4 text-sm font-semibold hover:bg-white/10 disabled:opacity-40">
                 Zapisz szkic
               </button>
-              <button type="button" disabled={!docText.trim()} onClick={() => { saveDoc(step.docId, docText, "approved", step.docTitle); setDraft(null); }}
+              <button type="button" disabled={!docText.trim()} onClick={() => setApproving(true)} aria-haspopup="dialog"
                 className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-brand-ink hover:brightness-95 disabled:opacity-40">
                 <Check className="size-4" aria-hidden="true" />Zatwierdzam dokument
+              </button>
+              <button type="button" disabled={!docText.trim() || docReview.review.status === "busy"} aria-haspopup="dialog"
+                onClick={() => { setApproving(true); void docReview.run(docText); }}
+                className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/20 px-4 text-sm font-semibold hover:bg-white/10 disabled:opacity-40">
+                <Sparkles className="size-4 text-brand" aria-hidden="true" />Sprawdź mój dokument
               </button>
               <button type="button" disabled={!docText.trim()} onClick={() => downloadText(fileName(step.docTitle), `${step.docTitle}\n\n${docText}`)}
                 className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/20 px-4 text-sm font-semibold hover:bg-white/10 disabled:opacity-40">
@@ -141,6 +155,9 @@ export function StepWorkspace({ stepId }: { stepId: string }) {
           <HowItWorks intro={STEP_CHAT_INTRO} hint="Bartek prowadzi krok: najpierw lekcja, potem pytania jedno po drugim, na końcu dokument do zatwierdzenia." defaultOpen={false} />
         </aside>
       </div>
+      <ApproveDialog open={approving} onClose={() => setApproving(false)} step={step} doc={docText}
+        review={docReview.review} onReview={() => void docReview.run(docText)}
+        onApprove={() => { setApproving(false); saveDoc(step.docId, docText, "approved", step.docTitle); setDraft(null); }} />
     </div>
   );
 }
@@ -190,11 +207,22 @@ function BartekLine({ text, talking }: { text: string; talking?: boolean }) {
   );
 }
 
-/** Lekcje kroku przed rozmową: jeden odtwarzacz naraz (iframe tylko dla wybranej lekcji), lista lekcji i link „Otwórz na Skool”. */
-function LessonGate({ lessons, watched, onDone }: { lessons: Lesson[]; watched: Record<string, boolean>; onDone: () => void }) {
-  const [active, setActive] = useState(() => Math.max(0, lessons.findIndex((l) => !watched[l.id])));
+/** Lekcje kroku przed rozmową: jeden odtwarzacz naraz (iframe tylko dla wybranej lekcji), lista lekcji i link „Otwórz materiały”.
+ *  Każdą lekcję odhacza się osobno, a „Obejrzane” włącza się po ok. 30 s z otwartą lekcją (krótkie nagranie: połowa długości). */
+function LessonGate({ lessons, isDone, onWatched }: { lessons: Lesson[]; isDone: (l: Lesson) => boolean; onWatched: (id: string) => void }) {
+  const [active, setActive] = useState(() => Math.max(0, lessons.findIndex((l) => !isDone(l))));
   const l = lessons[active] ?? lessons[0];
+  const done = l ? isDone(l) : true;
+  const need = watchSeconds(l?.video ? wideoLekcji(l).duration : undefined);
+  const left = useWatchCountdown(l?.id ?? "", need, !done);
   if (!l) return null;
+  const watched: Record<string, boolean> = Object.fromEntries(lessons.map((x) => [x.id, isDone(x)]));
+  const nextTodo = lessons.findIndex((x, i) => i !== active && !watched[x.id]);
+  const label = l.video ? "Obejrzane" : "Zaliczone";
+  const confirm = () => {
+    onWatched(l.id);
+    if (nextTodo >= 0) setActive(nextTodo); // ostatnia lekcja: krok sam przechodzi do rozmowy
+  };
   return (
     <section className="glass-card flex flex-col gap-4 rounded-2xl p-5" aria-labelledby="lekcja-h">
       <h2 id="lekcja-h" className="flex items-center gap-2 font-semibold">
@@ -245,26 +273,37 @@ function LessonGate({ lessons, watched, onDone }: { lessons: Lesson[]; watched: 
         </ol>
       ) : null}
       <div className="flex flex-wrap items-center gap-2">
-        {active < lessons.length - 1 ? (
-          <button type="button" onClick={() => setActive(active + 1)} className="inline-flex min-h-12 items-center gap-2 rounded-xl border border-white/20 px-4 font-semibold hover:bg-white/10">
-            Następna lekcja<ArrowRight className="size-4" aria-hidden="true" />
+        {!done ? (
+          <button type="button" onClick={confirm} disabled={left > 0}
+            className="inline-flex min-h-12 w-fit items-center gap-2 rounded-xl bg-brand px-5 font-bold text-brand-ink hover:brightness-105 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/70">
+            {left > 0
+              ? <><Clock className="size-4" aria-hidden="true" />{label} za <span className="tabular-nums">{countdown(left)}</span></>
+              : <><Check className="size-4" aria-hidden="true" />{label} · +{XP.lesson} XP{nextTodo >= 0 ? ", następna lekcja" : ", lecimy do pytań"}</>}
+          </button>
+        ) : nextTodo >= 0 ? (
+          <button type="button" onClick={() => setActive(nextTodo)} className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-brand px-5 font-bold text-brand-ink hover:brightness-105">
+            Następna lekcja do obejrzenia<ArrowRight className="size-4" aria-hidden="true" />
           </button>
         ) : null}
-        <button type="button" onClick={onDone} className="inline-flex min-h-12 w-fit items-center gap-2 rounded-xl bg-brand px-5 font-bold text-brand-ink hover:brightness-105">
-          <Check className="size-4" aria-hidden="true" />{lessons.length === 1 ? "Obejrzane" : "Obejrzane wszystkie"}, lecimy do pytań
-        </button>
+        {!done && active < lessons.length - 1 ? (
+          <button type="button" onClick={() => setActive(active + 1)} className="inline-flex min-h-12 items-center gap-2 rounded-xl border border-white/20 px-4 font-semibold hover:bg-white/10">
+            Pomiń na razie<ArrowRight className="size-4" aria-hidden="true" />
+          </button>
+        ) : null}
       </div>
+      {!done && left > 0 ? <p className="text-xs text-white/55">„{label}” włączy się po {need} s z otwartą lekcją. Każdą lekcję odhaczasz osobno.</p> : null}
     </section>
   );
 }
 
-function AssistantChat({ stepId, prelude, provider, model, messages, onChange, onDocument }: {
+function AssistantChat({ stepId, prelude, provider, model, messages, onChange, onReplied, onDocument }: {
   stepId: string;
   prelude: string[];
   provider: string;
   model: string;
   messages: ChatMessage[];
   onChange: (m: ChatMessage[]) => void;
+  onReplied: () => void; // XP za wiadomość: tylko po udanej odpowiedzi
   onDocument: (text: string) => void;
 }) {
   const { state } = useJourney();
@@ -321,7 +360,10 @@ function AssistantChat({ stepId, prelude, provider, model, messages, onChange, o
         onChange([...history, { role: "assistant", content: t }]);
         endRef.current?.scrollIntoView({ block: "end" });
       });
+      if (!answer.trim()) throw new Error("Brak odpowiedzi. Spróbuj jeszcze raz.");
       onChange([...history, { role: "assistant", content: answer }]);
+      // XP (i ewentualny nowy poziom) dopiero teraz: odpowiedź przyszła cała. Błąd 503/429 = bez XP i bez fanfary.
+      onReplied();
     } catch (err) {
       setError(err instanceof Error && err.message ? err.message : "Brak połączenia z serwerem.");
       onChange(messages); // wiadomość (i zdjęcia) wracają do pola, można wysłać jeszcze raz

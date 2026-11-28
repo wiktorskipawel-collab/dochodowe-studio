@@ -7,13 +7,16 @@
 // usunięte: wykres kołowy etapów (trudny do odczytania, zastąpiony ścieżką etap po etapie), słupki „Twój tydzień”
 // (7 dni to za mało, rytm pokazuje mapa aktywności), dzienne XP (szarpana linia, zastąpiona XP narastająco z progami)
 // i karta „Dokumenty gotowe” (to ta sama liczba co zatwierdzone kroki: 1 krok = 1 dokument).
+// Spójność liczników (przegląd UX 2026-11-27): główna oś = KROKI ścieżki („Krok 6 z 15”, pierścień = ten sam % co mapa
+// i menu). Kamienie = nagrody po drodze, poziom = XP, odznaki = osiągnięcia. Lekcje liczy jedna funkcja lessonProgress()
+// (gamification.ts): „Lekcje ścieżki” tu i na /lekcje to ta sama liczba.
 import Link from "next/link";
 import { motion } from "motion/react";
 import { ArrowRight, Flame, Zap, PlayCircle, Route, Trophy, Flag, TrendingUpIcon } from "lucide-react";
 import { useJourney } from "@/lib/store";
-import { STEPS, STAGES, stepStatuses, progressPercent, currentStep, allLessons } from "@/lib/journey";
+import { STEPS, STAGES, stepStatuses, progressPercent, currentStep } from "@/lib/journey";
 import {
-  LEVELS, xpTotal, levelOf, streakDays, activityGrid, docCompleteness, badges, lastWeek, xpTimeline, milestones, nextMilestone, phaseDetail, lessonDone,
+  LEVELS, xpTotal, levelOf, streakDays, activityGrid, docCompleteness, badges, lastWeek, xpTimeline, milestones, nextMilestone, phaseDetail, lessonDone, lessonProgress,
 } from "@/lib/gamification";
 import { AssistantAvatar, Typewriter, ASSISTANT_NAME } from "@/components/Assistant";
 import { Milestones } from "@/components/Milestones";
@@ -34,8 +37,7 @@ export function Home() {
   const xp = xpTotal(state.events);
   const level = levelOf(xp);
   const streak = streakDays(state.events);
-  const lessons = allLessons();
-  const watched = lessons.filter((l) => lessonDone(state, l.id)).length;
+  const lessons = lessonProgress(state).path; // ta sama liczba co na /lekcje („Twoja ścieżka”)
   const done = STEPS.filter((s) => statuses[s.id] === "done").length;
   const grid = activityGrid(state.events, 14);
   const activeDays = grid.flat().filter((d) => d.count > 0).length;
@@ -59,7 +61,7 @@ export function Home() {
   const cards = [
     { label: "Kroki zatwierdzone", value: `${done}/${STEPS.length}`, icon: Route, delta: lastWeek(state.events, ["approve"]).length, note: "zatwierdzonych w tym tygodniu", href: "/sciezka" },
     { label: "Kamienie milowe", value: `${stonesDone}/${stones.length}`, icon: Flag, delta: null, note: nextStone ? `najbliższy: ${nextStone.short} (${nextStone.done}/${nextStone.total})` : "wszystkie zdobyte", href: "#kamienie-h" },
-    { label: "Lekcje ścieżki", value: `${watched}/${lessons.length}`, icon: PlayCircle, delta: lastWeek(state.events, ["lesson"]).length, note: "lekcji w tym tygodniu", href: "/lekcje" },
+    { label: "Lekcje ścieżki", value: `${lessons.done}/${lessons.total}`, icon: PlayCircle, delta: lastWeek(state.events, ["lesson"]).length, note: "lekcji w tym tygodniu", href: "/lekcje" },
     { label: "Punkty XP", value: `${xp}`, icon: Zap, delta: xpWeek, note: "XP w tym tygodniu", href: "#xp-h" },
   ];
 
@@ -98,16 +100,20 @@ export function Home() {
           </div>
         </motion.section>
 
-        <motion.section data-tour="progress" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="glass-card flex items-center gap-6 rounded-3xl p-6 md:p-8">
+        <motion.section data-tour="progress" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="glass-card flex flex-col items-center gap-6 rounded-3xl p-6 sm:flex-row md:p-8">
           <Ring value={pct} size={150} stroke={12} label="Cała ścieżka" sub="ścieżki" />
-          <div className="flex min-w-0 flex-1 flex-col gap-3">
+          <div className="flex min-w-0 flex-1 flex-col gap-3 self-stretch sm:self-auto">
+            {/* Oś główna: kroki ścieżki. Poziom (XP) niżej, jako dodatek. */}
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/60">Poziom {level.index} z {LEVELS.length}</p>
-              <p className="text-2xl font-extrabold leading-tight">{level.name}</p>
-              <p className="mt-0.5 text-xs text-white/60">{level.opis}</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/60">Twoja ścieżka</p>
+              <p className="text-2xl font-extrabold leading-tight">{cur ? `Krok ${cur.no} z ${STEPS.length}` : "Wszystkie kroki zatwierdzone"}</p>
+              <p className="mt-0.5 text-xs text-white/60">{done} z {STEPS.length} kroków zatwierdzonych{cur ? ` · teraz: ${cur.title}` : ""}</p>
             </div>
             <div>
-              <div className="mb-1 flex justify-between gap-2 text-xs text-white/65"><span>{xp} XP</span><span className="truncate">{level.next ? `${level.nextName} · ${level.next} XP` : "max"}</span></div>
+              <div className="mb-1 flex flex-wrap justify-between gap-x-2 text-xs text-white/65">
+                <span title={level.opis}>Poziom {level.index} z {LEVELS.length}: <strong className="font-semibold text-white">{level.name}</strong></span>
+                <span className="shrink-0 tabular-nums">{level.next ? `${xp} / ${level.next} XP` : `${xp} XP`}</span>
+              </div>
               <div className="h-2.5 overflow-hidden rounded-full" style={{ background: "var(--viz-track)" }} role="progressbar" aria-valuenow={level.pct} aria-valuemin={0} aria-valuemax={100} aria-label="Postęp do kolejnego poziomu">
                 <motion.div className="h-full rounded-full bg-orange" initial={{ width: 0 }} animate={{ width: `${level.pct}%` }} transition={{ duration: 1 }} />
               </div>

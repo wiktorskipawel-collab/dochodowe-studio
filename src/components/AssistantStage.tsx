@@ -11,6 +11,7 @@ import { ArrowRight, Flame, Hand, PartyPopper, X } from "lucide-react";
 import { helloKey, useJourney, type JourneyState } from "@/lib/store";
 import { currentStep, stepStatuses } from "@/lib/journey";
 import { activityByDay, dayKey, streakDays } from "@/lib/gamification";
+import { isNudge, pace } from "@/lib/pace";
 import { ASSISTANT_NAME, AssistantAvatar, AssistantDock } from "@/components/Assistant";
 
 type Mood = "hello" | "cheer" | "nudge";
@@ -59,10 +60,19 @@ function welcomeScene(state: JourneyState, opts: { firstVisit?: boolean; summone
   const move = nextMove(state);
   const lines: string[] = [];
   let mood: Mood = "hello";
+  let cta = move.cta;
+  // Tempo do celu z ankiety (src/lib/pace.ts): przy wejściu Bartek chwali albo rozlicza, coraz mocniej.
+  const tempo = opts.firstVisit || opts.summoned ? null : pace(state, now);
+  const paced = !!tempo && (isNudge(tempo.level) || tempo.level === "brawo");
 
   if (opts.summoned) lines.push(`Jestem${hi}. Zobaczmy, co dalej.`);
   else if (opts.firstVisit) lines.push(`Cześć${hi}! Tu ${ASSISTANT_NAME}, a dokładniej mój asystent AI.`, "Dobrze, że jesteś. Prowadzę Cię krok po kroku, a Ty zatwierdzasz efekty.");
-  else if (away >= 3) {
+  else if (tempo && paced) {
+    mood = tempo.level === "brawo" ? "cheer" : "nudge";
+    const [first, ...rest] = tempo.lines;
+    lines.push(name ? `${name}, ${first.charAt(0).toLowerCase()}${first.slice(1)}` : first, ...rest);
+    cta = { label: tempo.cta, href: move.cta.href };
+  } else if (away >= 3) {
     mood = "nudge";
     lines.push(...awayLines(away, hi));
   } else lines.push(`Cześć${hi}! Dobrze, że jesteś.`);
@@ -75,9 +85,9 @@ function welcomeScene(state: JourneyState, opts: { firstVisit?: boolean; summone
   if (streak >= 2 && !activeToday) {
     mood = "nudge";
     lines.push(`Masz serię ${streak} dni. Jedno działanie dziś i jej nie tracisz.`);
-  } else if (streak >= 2) lines.push(`Seria: ${streak} dni z rzędu. Tak się buduje studio.`);
+  } else if (streak >= 2 && !paced) lines.push(`Seria: ${streak} dni z rzędu. Tak się buduje studio.`);
 
-  return { id: `hello-${opts.summoned ? "on-demand" : "entry"}-${now.getTime()}`, mood, lines, cta: move.cta };
+  return { id: `hello-${opts.summoned ? "on-demand" : "entry"}-${now.getTime()}`, mood, lines, cta };
 }
 
 function streakScene(state: JourneyState, streak: number): Scene {

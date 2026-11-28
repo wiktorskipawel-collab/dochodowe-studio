@@ -19,6 +19,7 @@ import {
   LEVELS, xpTotal, levelOf, streakDays, activityGrid, docCompleteness, badges, lastWeek, xpTimeline, milestones, nextMilestone, phaseDetail, lessonDone, lessonProgress,
 } from "@/lib/gamification";
 import { AssistantAvatar, Typewriter, ASSISTANT_NAME } from "@/components/Assistant";
+import { pace, isNudge, type Pace } from "@/lib/pace";
 import { Milestones } from "@/components/Milestones";
 import { Onboarding } from "@/components/Onboarding";
 import { ChartCard, DataTable, Ring, MeterList, Heatmap } from "@/components/Charts";
@@ -51,12 +52,15 @@ export function Home() {
   const nextStone = nextMilestone(stones);
   const curDoc = cur ? state.docs[cur.docId]?.content : undefined;
 
-  const message =
-    streak >= 2 ? `Masz serię ${streak} dni z rzędu. Nie przerywaj, dziś wystarczy jeden ruch.`
+  // Tempo do celu z ankiety (src/lib/pace.ts): pochwała albo upomnienie w stylu Bartka.
+  const tempo = pace(state);
+  const message = tempo ? tempo.headline
+    : streak >= 2 ? `Masz serię ${streak} dni z rzędu. Nie przerywaj, dziś wystarczy jeden ruch.`
     : cur && statuses[cur.id] === "draft" ? `Jesteś w trakcie kroku „${cur.title}”. Dokończmy go razem, zostało niewiele.`
     : cur ? `Następny krok: „${cur.title}”. ${cur.goal}`
     : "Cała ścieżka zatwierdzona. Teraz pilnujemy wyników i okazji.";
   const levelHint = level.next ? `Do poziomu „${level.nextName}” brakuje Ci ${level.next - xp} XP.` : "Masz najwyższy poziom: Dochodowe Studio.";
+  const tip = tempo?.tip ?? levelHint;
 
   const cards = [
     { label: "Kroki zatwierdzone", value: `${done}/${STEPS.length}`, icon: Route, delta: lastWeek(state.events, ["approve"]).length, note: "zatwierdzonych w tym tygodniu", href: "/sciezka" },
@@ -83,9 +87,10 @@ export function Home() {
               <div className="min-w-0">
                 <p className="text-xs font-semibold text-brand">{ASSISTANT_NAME} · Twój asystent AI</p>
                 <p className="mt-1 text-lg font-semibold leading-snug md:text-xl"><Typewriter text={state.profile?.name ? `${state.profile.name.split(" ")[0]}, ${message.charAt(0).toLowerCase()}${message.slice(1)}` : message} /></p>
-                <p className="mt-1 text-sm text-white/65">{levelHint}</p>
+                <p className="mt-1 text-sm text-white/65">{tip}</p>
               </div>
             </div>
+            {tempo ? <PaceStrip p={tempo} /> : null}
             {cur ? (
               <motion.div data-tour="next-step" whileHover={{ y: -4 }} whileTap={{ scale: 0.98 }}>
                 <Link href={`/krok/${cur.id}`} className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/5 p-4 transition hover:border-brand/60">
@@ -193,6 +198,46 @@ export function Home() {
             ))}
           </ul>
         </ChartCard>
+      </div>
+    </div>
+  );
+}
+
+/** Pasek „Tempo do celu”: zatwierdzone kroki (zieleń), zaległość względem planu (bursztyn) i znacznik planu na dziś. */
+function PaceStrip({ p }: { p: Pace }) {
+  const donePct = (p.done / p.total) * 100;
+  const planPct = (p.plannedExact / p.total) * 100;
+  const late = isNudge(p.level);
+  const forecast =
+    p.level === "start" ? "Plan: mniej więcej krok na tydzień"
+    : p.level === "meta" ? "Ścieżka domknięta"
+    : p.finishText ? `W tym tempie koniec ścieżki za ${p.finishText}`
+    : "W tym tempie koniec ścieżki: nigdy";
+  return (
+    <div className={`rounded-2xl border p-4 ${late ? "border-amber-300/35 bg-amber-300/[0.07]" : "border-white/10 bg-white/5"}`}>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <span className="text-xs font-semibold uppercase tracking-[0.14em] text-white/60">Tempo do celu</span>
+        <span className="text-xs text-white/65">termin celu: <strong className="font-semibold text-white">{p.deadlineText}</strong></span>
+      </div>
+      {p.goal ? <p className="mt-1 truncate text-sm font-semibold" title={p.goal}>„{p.goal}”</p> : null}
+      <div
+        className="relative mt-3 h-3 rounded-full"
+        style={{ background: "var(--viz-track)" }}
+        role="img"
+        aria-label={`Zatwierdzone kroki: ${p.done} z ${p.total}. Plan na dziś: ${p.planned}. ${forecast}.`}
+      >
+        {planPct > donePct ? (
+          <span aria-hidden="true" className="absolute inset-y-0 rounded-r-full bg-amber-300/45" style={{ left: `${donePct}%`, width: `${planPct - donePct}%` }} />
+        ) : null}
+        <motion.span aria-hidden="true" className="absolute inset-y-0 left-0 rounded-full bg-brand" initial={{ width: 0 }} animate={{ width: `${donePct}%` }} transition={{ duration: 1 }} />
+        {p.plannedExact > 0 && p.level !== "meta" ? (
+          <span aria-hidden="true" title={`Plan na dziś: ${p.planned}`} className="absolute -bottom-1 -top-1 w-0.5 -translate-x-1/2 rounded-full bg-white" style={{ left: `${planPct}%` }} />
+        ) : null}
+      </div>
+      <div className="mt-2 flex flex-wrap justify-between gap-x-4 gap-y-1 text-xs text-white/65">
+        <span>Masz: <strong className="text-white">{p.done} z {p.total}</strong></span>
+        <span>Plan na dziś: <strong className="text-white">{p.planned}</strong>{p.behind ? <strong className="ml-1 text-amber-200">(−{p.behind})</strong> : null}</span>
+        <span className={late ? "font-semibold text-amber-200" : ""}>{forecast}</span>
       </div>
     </div>
   );

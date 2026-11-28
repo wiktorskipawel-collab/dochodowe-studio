@@ -21,6 +21,7 @@ import { Marker, MarkerContent, MarkerIcon } from "@/components/ui/marker";
 import { Spinner } from "@/components/ui/spinner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { AssistantAvatar, ASSISTANT_NAME } from "@/components/Assistant";
+import { BartekLine, TypedScript, TypingBubble } from "@/components/BartekScript";
 import { ChatComposer, UserMessageBody, composeUserMessage, type ImageDraft } from "@/components/ChatComposer";
 import { HowItWorks, IntroDialog, useIntro } from "@/components/ToolIntro";
 import { StepTools } from "@/components/StepTools";
@@ -80,8 +81,8 @@ export function StepWorkspace({ stepId }: { stepId: string }) {
         <section className="flex min-w-0 flex-col gap-3" aria-label="Rozmowa z asystentem">
           {!lessonsDone ? (
             <>
-              <div className="glass-card flex flex-col gap-5 rounded-2xl p-4 md:p-5">
-                {intro.map((line, i) => <BartekLine key={i} text={line} />)}
+              <div className="glass-card flex flex-col gap-5 rounded-2xl p-4 md:p-5" aria-live="polite">
+                <TypedScript key={`${stepId}:lekcja`} storageKey={`${stepId}:lekcja`} lines={intro} />
               </div>
               <LessonGate lessons={step.lessons} isDone={(l) => lessonDone(state, l.id)} onWatched={(id) => markWatched([id])} />
             </>
@@ -190,20 +191,6 @@ function StageBar({ stage }: { stage: number }) {
         );
       })}
     </ol>
-  );
-}
-
-function BartekLine({ text, talking }: { text: string; talking?: boolean }) {
-  return (
-    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-      <Message>
-        <MessageAvatar><AssistantAvatar size={36} talking={talking} /></MessageAvatar>
-        <MessageContent>
-          <MessageHeader>{ASSISTANT_NAME} · asystent AI</MessageHeader>
-          <Bubble variant="tinted"><BubbleContent className="whitespace-pre-wrap leading-relaxed">{text}</BubbleContent></Bubble>
-        </MessageContent>
-      </Message>
-    </motion.div>
   );
 }
 
@@ -391,8 +378,11 @@ function AssistantChat({ stepId, prelude, provider, model, messages, onChange, o
   return (
     <>
       <div className="glass-card flex flex-col gap-5 rounded-2xl p-4 md:p-5" aria-live="polite">
-        {prelude.map((line, i) => <BartekLine key={`p${i}`} text={line} />)}
-        {shown.map((m, i) => {
+        {/* Nowa rozmowa: zapowiedź i pierwsze pytanie Bartek „pisze” po kolei (BartekScript.tsx). Potem zwykła historia. */}
+        {!messages.length ? (
+          <TypedScript key={`${stepId}:rozmowa`} storageKey={`${stepId}:rozmowa`} lines={[...prelude, step.opener]} />
+        ) : prelude.map((line, i) => <BartekLine key={`p${i}`} text={line} />)}
+        {messages.length ? shown.map((m, i) => {
           const pending = !m.content && busy && i === shown.length - 1;
           return (
             <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
@@ -402,7 +392,7 @@ function AssistantChat({ stepId, prelude, provider, model, messages, onChange, o
                   <MessageContent>
                     <MessageHeader>{ASSISTANT_NAME} · asystent AI</MessageHeader>
                     {pending ? (
-                      <Marker role="status"><MarkerIcon><Spinner /></MarkerIcon><MarkerContent className="shimmer">Bartek myśli…</MarkerContent></Marker>
+                      <TypingBubble />
                     ) : (
                       <Bubble variant="tinted"><BubbleContent className="whitespace-pre-wrap leading-relaxed">{m.content}</BubbleContent></Bubble>
                     )}
@@ -418,7 +408,7 @@ function AssistantChat({ stepId, prelude, provider, model, messages, onChange, o
               )}
             </motion.div>
           );
-        })}
+        }) : null}
         {busy === "document" ? <Marker role="status"><MarkerIcon><Spinner /></MarkerIcon><MarkerContent className="shimmer">Bartek składa dokument z rozmowy…</MarkerContent></Marker> : null}
         <div ref={endRef} />
       </div>

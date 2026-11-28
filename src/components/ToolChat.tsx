@@ -16,8 +16,7 @@ import { useJourney, type ChatMessage } from "@/lib/store";
 import { introKey, type ToolMeta } from "@/lib/tools-public";
 import { Message, MessageAvatar, MessageContent, MessageHeader } from "@/components/ui/message";
 import { Bubble, BubbleContent } from "@/components/ui/bubble";
-import { Marker, MarkerContent, MarkerIcon } from "@/components/ui/marker";
-import { Spinner } from "@/components/ui/spinner";
+import { TypedScript, TypingBubble } from "@/components/BartekScript";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { AssistantAvatar } from "@/components/Assistant";
 import { toolIcon } from "@/components/ToolIcon";
@@ -178,7 +177,11 @@ export function ToolChat({ tool, provider, model, messages, onChange, context, c
       </div>
 
       <div className="glass-card flex flex-col gap-5 rounded-2xl p-4 md:p-5" aria-live="polite">
-        {shown.map((m, i) => {
+        {/* Nowa rozmowa: powitanie narzędzia „pisze się” (BartekScript.tsx). Potem zwykła historia. */}
+        {!messages.length ? (
+          <TypedScript key={`tool:${tool.id}`} storageKey={`tool:${tool.id}`} lines={[tool.opener]} header={`${tool.title} · asystent AI`} icon={Icon} />
+        ) : null}
+        {messages.length ? shown.map((m, i) => {
           const last = i === shown.length - 1;
           const pending = !m.content && busy && last;
           const streaming = busy && last;
@@ -191,7 +194,7 @@ export function ToolChat({ tool, provider, model, messages, onChange, context, c
                   <MessageContent>
                     <MessageHeader>{tool.title} · asystent AI</MessageHeader>
                     {pending ? (
-                      <Marker role="status"><MarkerIcon><Spinner /></MarkerIcon><MarkerContent className="shimmer">Asystent pisze…</MarkerContent></Marker>
+                      <TypingBubble label="Asystent pisze…" />
                     ) : (
                       <Bubble variant="tinted" className="max-w-full sm:max-w-[92%]"><BubbleContent><RichText text={m.content} /></BubbleContent></Bubble>
                     )}
@@ -219,7 +222,7 @@ export function ToolChat({ tool, provider, model, messages, onChange, context, c
               )}
             </motion.div>
           );
-        })}
+        }) : null}
         <div ref={endRef} />
       </div>
 
